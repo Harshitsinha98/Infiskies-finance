@@ -10,7 +10,9 @@ Internal project-finance and work-management portal for the owner, co-admins, an
 ## Owner bootstrap
 Initial owner email: `sinhaharshit67@gmail.com`.
 
-Do not hard-code owner privileges in the browser. Bootstrap the owner through a trusted Supabase SQL/admin operation only after the same email has successfully signed in and the matching `auth.users` row exists. The frontend denies access until an active `profiles` row exists.
+This app reuses the existing BreakIQ Supabase project to avoid creating another free-tier project. Its finance tables, custom types, and helper functions are prefixed with `infiskies_`; BreakIQ's existing tables are left untouched.
+
+Do not hard-code owner privileges in the browser. Bootstrap the owner through a trusted Supabase SQL/admin operation only after the same email has successfully signed in and the matching `auth.users` row exists. The frontend denies access until an active `infiskies_profiles` row exists.
 
 ## Share rules
 Employee shares are individually configured per project, either percentage of that project's configured share base or a fixed amount. Expenses remain separate from shares. The app should show agreed share, amount paid, and amount outstanding separately.
