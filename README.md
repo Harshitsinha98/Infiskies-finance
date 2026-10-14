@@ -13,7 +13,7 @@ Private project-finance and work-management workspace for the owner, co-admins a
 - Expenses: project/business scopes, category, amount, date and reimbursement status.
 - Income: pending/received/void records per project.
 - Team shares: percentage-of-share-base or fixed agreements per project/member.
-- Payouts: create pending payouts from share agreements, approve and mark paid.
+- Payouts: create pending payouts from share agreements, approve and mark paid; owner/co-admin can see each agreement's paid-to-date and remaining balance.
 - Tasks: create/update, assign, set priority, status, progress and due dates.
 - Team & invitations: active/suspended profile access, scoped co-admin permissions, invitation/revocation and invitee profile activation after matching Google sign-in.
 - Reports: export actual accessible rows as CSV.
@@ -38,7 +38,7 @@ Apply migration files in chronological order to a fresh project:
 These migrations have been applied to the current shared BreakIQ project. Do not run an older unprefixed finance schema in the shared project.
 
 ## Owner
-Initial owner email: `sinhaharshit67@gmail.com`. The matching user must first sign in with Google; owner provisioning is performed using trusted SQL/admin access, not from browser code.
+Initial owner email: `sinhaharshit67@gmail.com`. The matching user must first sign in with Google. `sinhaharshit67@gmail.com` is the current owner; `infiskies@gmail.com` is allowlisted to become an additional active owner on first verified Google sign-in.
 
 ## Security notes
 - The frontend uses only the project's publishable/anon key.
