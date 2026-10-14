@@ -31,6 +31,7 @@ Apply migration files in chronological order to a fresh project:
 2. `supabase/migrations/20261014000200_settings_and_invitation_acceptance.sql`
 3. `supabase/migrations/20261014000300_audit_trail.sql`
 4. `supabase/migrations/20261014000400_invitation_acceptance_rpc.sql`
+5. `supabase/migrations/20261014000500_planned_expenses.sql`
 
 These migrations have been applied to the current shared BreakIQ project. Do not run an older unprefixed finance schema in the shared project.
 
