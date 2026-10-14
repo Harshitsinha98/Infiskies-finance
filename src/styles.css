@@ -70,3 +70,29 @@
 .finance-projection-table table{min-width:1260px}
 @media(max-width:1230px){.payout-forecast-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:700px){.payout-forecast-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+
+
+/* Project-wise task board and username/password sign-in */
+.login-method-switch{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:5px;border:1px solid var(--line,#e7e8f0);border-radius:12px;margin:18px 0 12px;background:#f8f8fc}
+.login-method-switch button{border:0;border-radius:8px;background:transparent;padding:10px 8px;color:#74778c;font:inherit;font-size:12px;font-weight:650;cursor:pointer}
+.login-method-switch button.active{background:#fff;color:#5545d8;box-shadow:0 2px 8px #1d21400f}
+.password-login-form{display:grid;gap:12px}
+.password-login-form label{display:grid;gap:6px;color:#555971;font-size:12px;font-weight:600}
+.password-login-form input{width:100%;box-sizing:border-box;border:1px solid #dedfed;border-radius:10px;background:#fff;padding:12px 13px;color:#24263a;font:inherit;outline:none}
+.password-login-form input:focus{border-color:#7965ed;box-shadow:0 0 0 3px #7965ed1c}
+.tasks-by-project-panel{min-width:0}
+.task-board-heading{align-items:flex-end;gap:16px;flex-wrap:wrap}
+.task-project-toolbar{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap}
+.task-project-toolbar label{display:grid;gap:5px;color:#73778f;font-size:11px;font-weight:650}
+.task-project-toolbar select{min-width:180px;border:1px solid #e0e2ef;border-radius:9px;padding:10px 12px;background:#fff;color:#393c56;font:inherit;font-size:12px}
+.task-project-list{display:grid;gap:16px}
+.task-project-card{border:1px solid #e7e8f2;border-radius:14px;overflow:hidden;background:#fff}
+.task-project-title{display:flex;align-items:center;gap:12px;padding:16px 18px;background:#fbfbff;border-bottom:1px solid #ececf5}
+.task-project-icon{display:grid;place-items:center;width:36px;height:36px;border-radius:10px;background:#eeeaff;color:#6955e7;flex-shrink:0}
+.task-project-title h3{font-size:14px;line-height:1.35;margin:0;color:#2b2d43}
+.task-project-title p{font-size:11px;color:#8589a0;margin:4px 0 0}
+.task-project-progress{margin-left:auto;white-space:nowrap;font-size:11px;font-weight:650;color:#5e52cc;background:#f0edff;padding:7px 9px;border-radius:8px}
+.task-project-card .table-wrap{border:0;border-radius:0}
+.task-project-card .table-wrap table{min-width:780px}
+.task-project-card .table-wrap tbody tr:last-child td{border-bottom:0}
+@media(max-width:760px){.task-project-toolbar{width:100%;align-items:stretch}.task-project-toolbar label{flex:1}.task-project-toolbar select{min-width:0;width:100%}.task-project-title{padding:13px}.task-project-progress{font-size:10px;padding:6px}.login-method-switch button{font-size:11px;padding:9px 5px}}
