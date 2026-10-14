@@ -18,6 +18,7 @@ Private project-finance and work-management workspace for the owner, co-admins a
 - Team & invitations: active/suspended profile access, scoped co-admin permissions, invitation/revocation and invitee profile activation after matching Google sign-in.
 - Reports: export actual accessible rows as CSV.
 - Settings and audit activity log.
+- Owner dashboard: Overall and Project-wise tabs with projected income, share payouts, planned expenses, projected profit, and the four actual net metrics. Planned expenses are explicitly separated from actual expenses.
 
 ## Shared Supabase project
 The application reuses the existing BreakIQ Supabase project to avoid creating another free-tier project. Every Infiskies Finance table, custom type and helper function uses the `infiskies_` prefix. Existing BreakIQ tables are not modified by the Infiskies migrations.
