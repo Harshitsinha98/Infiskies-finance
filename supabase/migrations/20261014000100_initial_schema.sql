@@ -120,9 +120,14 @@ alter table public.tasks enable row level security;
 alter table public.audit_logs enable row level security;
 
 create policy "profiles_select_authorized" on public.profiles for select to authenticated using(id=(select auth.uid()) or public.has_permission('members.manage'));
--- Self-service profile updates are intentionally disabled; admin role/profile edits must use a trusted endpoint.
-create policy "profiles_manage" on public.profiles for all to authenticated using(public.has_permission('members.manage')) with check(public.has_permission('members.manage') and role <> 'owner');
-create policy "invitations_manage" on public.invitations for all to authenticated using(public.has_permission('members.manage')) with check(public.has_permission('members.manage') and role <> 'owner');
+-- Role changes are only supported by trusted owner/admin endpoints. No user can update own role.
+create policy "profiles_update" on public.profiles for update to authenticated
+using(public.has_permission('members.manage') and role <> 'owner')
+with check(public.has_permission('members.manage') and role <> 'owner');
+create policy "invitations_select" on public.invitations for select to authenticated using(public.has_permission('members.manage'));
+create policy "invitations_insert" on public.invitations for insert to authenticated with check(public.has_permission('members.manage') and invited_by=(select auth.uid()) and role <> 'owner');
+create policy "invitations_update" on public.invitations for update to authenticated using(public.has_permission('members.manage')) with check(public.has_permission('members.manage') and role <> 'owner');
+create policy "invitations_delete" on public.invitations for delete to authenticated using(public.has_permission('members.manage'));
 create policy "projects_select" on public.projects for select to authenticated using(
  public.current_role()='owner' or public.has_permission('projects.manage')
  or exists(select 1 from public.project_members pm where pm.project_id=id and pm.employee_id=(select auth.uid()) and pm.status='active')
