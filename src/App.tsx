@@ -50,8 +50,18 @@ export default function App() {
       setAuthorized(false);
       setProfileChecked(false);
       if (!session || !supabase) { setProfileChecked(true); return; }
-      const { data, error } = await (supabase as any).from("infiskies_profiles").select("role,status,email").eq("id", session.user.id).maybeSingle();
+      let { data, error } = await (supabase as any).from("infiskies_profiles").select("role,status,email").eq("id", session.user.id).maybeSingle();
       if (!active) return;
+      if (!error && !data) {
+        // The RPC activates only a valid, unexpired invitation matching this authenticated user's JWT email.
+        const { data: invitationAccepted } = await (supabase as any).rpc("infiskies_accept_my_invitation");
+        if (!active) return;
+        if (invitationAccepted) {
+          const retry = await (supabase as any).from("infiskies_profiles").select("role,status,email").eq("id", session.user.id).maybeSingle();
+          data = retry.data;
+          error = retry.error;
+        }
+      }
       const emailMatches = String(data?.email || "").toLowerCase() === String(session.user.email || "").toLowerCase();
       if (error || !data || data.status !== "active" || !emailMatches) {
         setAuthorized(false);
