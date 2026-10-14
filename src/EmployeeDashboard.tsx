@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useMemo } from "react";
 import type { ReactNode } from "react";
-import { ArrowRight, Banknote, BriefcaseBusiness, CircleDollarSign, Clock3, ListTodo, RefreshCw, Wallet } from "lucide-react";
+import { ArrowRight, Banknote, BriefcaseBusiness, CircleDollarSign, Clock3, RefreshCw, Wallet } from "lucide-react";
 type Row = Record<string, any>;
 type Props = { projects: Row[]; shares: Row[]; payouts: Row[]; tasks: Row[]; search: string; onRefresh: () => void; onNavigate: (view: string) => void };
 const money = (n:number) => new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",maximumFractionDigits:0}).format(Number(n||0));
