@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from "react";
 import { ArrowRight, BadgeCheck, LockKeyhole, Settings, ShieldCheck, Sparkles } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
