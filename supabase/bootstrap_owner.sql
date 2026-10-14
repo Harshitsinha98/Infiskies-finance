@@ -14,7 +14,7 @@ begin
     raise exception 'Owner user not found. First sign in through Supabase Google Auth with sinhaharshit67@gmail.com, then rerun this script.';
   end if;
 
-  insert into public.profiles (
+  insert into public.infiskies_profiles (
     id, email, full_name, avatar_url, role, status, permissions
   )
   values (
@@ -30,8 +30,8 @@ begin
   )
   on conflict (id) do update
   set email = excluded.email,
-      full_name = coalesce(nullif(public.profiles.full_name, ''), excluded.full_name),
-      avatar_url = coalesce(public.profiles.avatar_url, excluded.avatar_url),
+      full_name = coalesce(nullif(public.infiskies_profiles.full_name, ''), excluded.full_name),
+      avatar_url = coalesce(public.infiskies_profiles.avatar_url, excluded.avatar_url),
       role = 'owner',
       status = 'active',
       updated_at = now();
