@@ -7,6 +7,7 @@ The current BreakIQ Supabase project already has all three Infiskies migrations 
 - `supabase/migrations/20261014000100_initial_schema.sql`
 - `supabase/migrations/20261014000200_settings_and_invitation_acceptance.sql`
 - `supabase/migrations/20261014000300_audit_trail.sql`
+- `supabase/migrations/20261014000400_invitation_acceptance_rpc.sql`
 
 Every finance table/type/function uses the `infiskies_*` prefix so it can coexist with BreakIQ's existing `profiles`, `projects` and operations tables. Never run an older unprefixed finance schema in the shared project.
 
@@ -35,7 +36,7 @@ In Authentication → URL Configuration:
 The bootstrap script uses a privileged SQL Editor session; never expose database credentials or a service-role key in frontend code.
 
 ## 5. Member invitations
-The Team page writes an invitation record but does not send an email. Manually share the deployed app URL. When a user signs in with Google using the exact invited email, the database trigger creates their active Infiskies profile from the unexpired invitation. If they have already signed in before you create the invitation, ask them to sign out and sign in again after the invitation is saved.
+The Team page writes an invitation record but does not send an email. Manually share the deployed app URL. When a user signs in with Google using the exact invited email, the auth trigger or the authenticated `infiskies_accept_my_invitation()` RPC creates their active Infiskies profile from the unexpired invitation. This supports both brand-new and previously signed-in Google accounts.
 
 ## 6. Publishable key
 The Supabase publishable key is intended for browser applications. It is not a database authorization boundary; all exposed tables must keep RLS enabled and their policies tested. Never use a service-role/secret key in a `VITE_*` variable.
