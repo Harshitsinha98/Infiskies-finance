@@ -39,7 +39,7 @@ The bootstrap script uses a privileged SQL Editor session; never expose database
 ## 5. Member invitations
 The Team page writes an invitation record but does not send an email. Manually share the deployed app URL. When a user signs in with Google using the exact invited email, the auth trigger or the authenticated `infiskies_accept_my_invitation()` RPC creates their active Infiskies profile from the unexpired invitation. This supports both brand-new and previously signed-in Google accounts.
 
-## 7. Publishable key
+## 6. Publishable key
 The Supabase publishable key is intended for browser applications. It is not a database authorization boundary; all exposed tables must keep RLS enabled and their policies tested. Never use a service-role/secret key in a `VITE_*` variable.
 
 ## Current implementation status
