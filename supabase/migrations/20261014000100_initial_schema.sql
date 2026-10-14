@@ -120,7 +120,7 @@ alter table public.tasks enable row level security;
 alter table public.audit_logs enable row level security;
 
 create policy "profiles_select_authorized" on public.profiles for select to authenticated using(id=(select auth.uid()) or public.has_permission('members.manage'));
--- Role changes are only supported by trusted owner/admin endpoints. No user can update own role.
+-- Do not grant direct profile insert/delete. Admins can modify non-owner profiles via this scoped policy.
 create policy "profiles_update" on public.profiles for update to authenticated
 using(public.has_permission('members.manage') and role <> 'owner')
 with check(public.has_permission('members.manage') and role <> 'owner');
