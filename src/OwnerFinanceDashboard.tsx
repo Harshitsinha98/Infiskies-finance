@@ -2,7 +2,7 @@
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import {
-  Activity, ArrowRight, Banknote, BriefcaseBusiness, ChartNoAxesCombined,
+  ArrowRight, BriefcaseBusiness, ChartNoAxesCombined,
   CircleDollarSign, RefreshCw, TrendingUp, Wallet, HandCoins
 } from "lucide-react";
 
