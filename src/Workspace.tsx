@@ -106,7 +106,6 @@ export default function Workspace({ session, role, onSignOut }: { session: Sessi
   const actualExpenseRows = expenses.filter((e) => e.status !== "void" && e.status !== "planned");
   const totalExpenses = total(actualExpenseRows, "amount");
   const totalIncome = total(income.filter((r) => r.status === "received"), "amount");
-  const openTasks = tasks.filter((t) => t.status !== "done" && t.status !== "blocked").length;
   const paidPayouts = total(payouts.filter((p) => p.status === "paid"));
   const totalCommittedShares = shares.filter((s) => s.status === "active").reduce((sum, s) => {
     const p = projectById.get(s.project_id);
