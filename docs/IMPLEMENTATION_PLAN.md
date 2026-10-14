@@ -1,55 +1,46 @@
 # Infiskies Finance Implementation Plan
 
-## Product roles
-- `owner`: complete business access, creates co-admins and employees.
-- `co_admin`: permission-scoped access. Cannot create owner or grant owner role.
-- `employee`: own profile, assigned tasks, explicitly granted project access, own share and payout summaries only.
+## Roles
+- Owner: complete business access and can invite/manage members and appoint co-admins.
+- Co-admin: explicit permission-scoped access; cannot grant the owner role or change owner privileges.
+- Employee: own profile, assigned tasks, own share agreements and payout summaries only.
 
-## Supabase schema (planned)
-- `profiles`: keyed to `auth.users.id`; email, full name, role, active/suspended state, creator and timestamps.
-- `invitations`: normalized invited email, intended role, permission JSON, expiry, status and creator.
-- `projects`: client, description, status, contract value, configured share base, dates, creator.
-- `project_members`: project-to-user membership, share type (`percentage` or `fixed`), share value, agreement version and active status.
-- `revenue_entries`: project, invoice/reference, amount, received/pending status and dates.
-- `expenses`: nullable project for business-wide expenses, scope, category, amount, incurred date, paid-by member, receipt path, status and creator.
-- `payouts`: project, member, share agreement snapshot, amount, status (`pending`, `approved`, `paid`, `void`), approval and payment metadata.
-- `tasks`: optional project, title/description, assignee, assigner, priority, status, due date, progress and timestamps.
-- `audit_logs`: actor, action, entity type/id, minimal JSON change summary and timestamp.
+## Supabase schema
+- profiles: auth user ID, normalized email, role, active/suspended state and permission flags.
+- invitations: normalized invited email, intended role, permissions, expiry and acceptance status.
+- projects: client, status, contract value, share base and dates.
+- project_members: individual per-project share agreement; percentage or fixed value and agreement version.
+- revenue_entries: project income and received/pending state.
+- expenses: project and business expenses, category, receipt and payment state.
+- payouts: agreed amount, approval/payment status and immutable share-calculation snapshot.
+- tasks: project, assignee, assigner, priority, status, deadline and progress.
+- audit_logs: sensitive change history.
 
-## Share calculation
-- Percentage: configured project `share_base_amount * share_value / 100`.
-- Fixed: agreed `share_value` in INR.
-- Expenses remain separate; never automatically subtract expenses from shares.
-- Display agreed amount, paid amount, and outstanding amount separately.
-- Store an immutable share-agreement snapshot on payout/settlement records so later edits do not rewrite history.
-- Warn if combined allocations exceed project share base; admin must explicitly confirm any override.
+## Financial rules
+Percentage share = project share base × employee percentage / 100. Fixed shares are employee-specific fixed amounts. Expenses remain separate and do not automatically reduce shares. Track agreed, approved, paid and outstanding separately. Warn on over-allocation; preserve historical agreements in payout snapshots.
 
 ## Security requirements
-- Use Supabase Auth Google OAuth only; no Firebase dependencies.
-- Disable open public sign-up where supported by project configuration; allow only pre-authorized emails.
-- On OAuth callback, verify an active `profiles` row exists for `auth.uid()` and normalized email matches the authorized invitation/profile. Otherwise sign out and show an access-denied message.
-- Invitations must be created only by an authorized owner/co-admin with `members.manage`; role changes must happen through trusted database functions or Edge Functions, not client-side role assignment.
-- Enable RLS on every public table. Default deny. Use `auth.uid()` and permission helper functions to enforce access at database level.
-- Employees can read/update only permitted own profile fields; employees can read their assigned tasks and own share/payout records, not other employees' financial data.
-- Co-admin access is checked against explicit permission flags; no implied full access.
-- Prevent owners being demoted by co-admins and prevent clients from granting themselves roles.
-- Audit sensitive actions. Keep service-role keys server-side only.
+- Supabase Auth Google OAuth only; no Firebase dependency.
+- Block access unless the Google-authenticated user has an active profile matching the normalized auth email.
+- Use a trusted owner bootstrap after the matching Supabase Auth user exists; never grant owner role based solely on browser-submitted email.
+- Invitations, role changes and permission changes must occur through trusted server/admin paths.
+- Enable RLS on every exposed table and default deny.
+- Employees can see only assigned tasks and their own share/payout data; co-admin data access depends on explicit permissions.
+- Never expose a service-role key to the browser or commit real credentials.
 
-## Delivery phases
-1. Design foundation, routes, responsive shell and design system.
-2. Supabase project configuration, Google OAuth callback, profile bootstrap and RLS.
-3. Member invitations and role/permission management.
-4. Projects, project memberships and share agreements.
-5. Revenue, expenses, miscellaneous costs and payout ledger.
-6. Tasks and employee workspace.
-7. Analytics, charts, exports and audit history.
-8. Permission/security tests, build validation and Vercel deployment.
+## Phases
+1. Responsive React/Vite/TypeScript foundation.
+2. Supabase project, Google OAuth, owner bootstrap, RLS and access tests.
+3. Invitations, member roles and co-admin permissions.
+4. Projects, team assignments and shares.
+5. Revenue, expenses, payouts and reports.
+6. Task assignment and employee workspace.
+7. Dashboards, charts, exports and audit logs.
+8. Test/build, security review and Vercel production connection.
 
-## Owner bootstrap
-Owner email: `sinhaharshit67@gmail.com`. First create/sign in the owner in Supabase Auth, then promote the matching auth user through a one-time trusted admin SQL/migration or server-side procedure. Do not grant owner merely because a client sends this email from the browser.
+Owner bootstrap email: `sinhaharshit67@gmail.com`.
 
-## Required environment variables
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY` (or the Supabase publishable key appropriate to the project)
-
-Only public client keys belong in Vercel's client-side build. Service-role keys must never use a `VITE_` prefix or ship to browsers.
+## Environment
+- VITE_SUPABASE_URL
+- VITE_SUPABASE_ANON_KEY (or the project's public publishable key)
+Only public client keys go into Vite builds. Service-role secrets stay server-side.
