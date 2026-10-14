@@ -69,7 +69,8 @@ export default function OwnerFinanceDashboard({
   const projectedPayouts = activeForecastShares.reduce((sum, share) => sum + shareCommitment(share), 0);
   const pendingPayouts = activeForecastShares.reduce((sum, share) => {
     const paidAgainstAgreement = total(paidPayoutRows.filter((payout) => payout.project_member_id === share.id));
-    return sum + Math.max(0, shareCommitment(share) - paidAgainstAgreement);
+    const submitted = total(payouts.filter((row) => row.project_member_id === share.id && ["pending", "approved"].includes(row.status)));
+    return sum + Math.max(0, shareCommitment(share) - paidAgainstAgreement, submitted);
   }, 0);
   const projectedExpenses = total(plannedExpenseRows);
   const projectedProfit = projectedIncome - projectedPayouts - projectedExpenses;
