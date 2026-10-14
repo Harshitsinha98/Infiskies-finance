@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { supabase } from "./lib/supabase";
 import OwnerFinanceDashboard from "./OwnerFinanceDashboard";
+import EmployeeDashboard from "./EmployeeDashboard";
 
 type Role = "owner" | "co_admin" | "employee";
 type Row = Record<string, any>;
@@ -89,7 +90,7 @@ export default function Workspace({ session, role, onSignOut }: { session: Sessi
 
   const isOwner = role === "owner";
   const visibleItems = role === "employee"
-    ? [{ label: "Overview", icon: LayoutDashboard, section: "Workspace" }, { label: "Tasks", icon: ListTodo, section: "Workspace" }, { label: "Team shares", icon: CircleDollarSign, section: "Finance" }, { label: "Payouts", icon: Banknote, section: "Finance" }]
+    ? [{ label: "Overview", icon: LayoutDashboard, section: "Workspace" }, { label: "Projects", icon: BriefcaseBusiness, section: "Workspace" }, { label: "Tasks", icon: ListTodo, section: "Workspace" }, { label: "Team shares", icon: CircleDollarSign, section: "Finance" }, { label: "Payouts", icon: Banknote, section: "Finance" }]
     : [
       { label: "Overview", icon: LayoutDashboard, section: "Workspace" }, { label: "Projects", icon: BriefcaseBusiness, section: "Workspace" },
       { label: "Tasks", icon: ListTodo, section: "Workspace" }, { label: "Expenses", icon: Wallet, section: "Finance" },
@@ -298,7 +299,8 @@ export default function Workspace({ session, role, onSignOut }: { session: Sessi
         {loading && <div className="inline-loading"><span /> Loading latest records from Supabase…</div>}
 
         {view === "Overview" && isOwner && <OwnerFinanceDashboard projects={projects} expenses={expenses} shares={shares} income={income} payouts={payouts} search={query} onRefresh={() => void refreshData()} onNavigate={(next) => setView(next)} />}
-        {view === "Overview" && !isOwner && <div className="data-view"><div className="stat-grid">
+        {view === "Overview" && role === "employee" && <EmployeeDashboard projects={projects} shares={shares} payouts={payouts} tasks={tasks} search={query} onRefresh={() => void refreshData()} onNavigate={(next) => setView(next)} />}
+        {view === "Overview" && role === "co_admin" && <div className="data-view"><div className="stat-grid">
           <StatCard label="Project value" value={money(totalProjectValue)} caption={projects.length + " saved project(s)"} color="lilac" icon={<BriefcaseBusiness size={18} />} />
           <StatCard label="Income received" value={money(totalIncome)} caption={income.filter((r) => r.status === "received").length + " receipt(s)"} color="mint" icon={<TrendingUp size={18} />} />
           <StatCard label="Expenses recorded" value={money(totalExpenses)} caption={actualExpenseRows.length + " actual record(s)"} color="peach" icon={<Wallet size={18} />} />
