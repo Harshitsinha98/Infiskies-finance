@@ -121,7 +121,7 @@ export default function Workspace({ session, role, onSignOut }: { session: Sessi
   };
   const paidAgainstShare = (share: Row) => payouts.filter((payout) => payout.project_member_id === share.id && payout.status === "paid").reduce((sum, payout) => sum + Number(payout.amount || 0), 0);
   const reservedAgainstShare = (share: Row) => payouts.filter((payout) => payout.project_member_id === share.id && (payout.status === "pending" || payout.status === "approved")).reduce((sum, payout) => sum + Number(payout.amount || 0), 0);
-  const pendingAgainstShare = (share: Row) => Math.max(0, calcShare(share) - paidAgainstShare(share));
+  const pendingAgainstShare = (share: Row) => Math.max(0, calcShare(share) - paidAgainstShare(share), reservedAgainstShare(share));
   const availableForNewPayout = (share: Row) => Math.max(0, calcShare(share) - paidAgainstShare(share) - reservedAgainstShare(share));
   const visibleProjects = projects.filter((p) => contains(p, ["name", "client_name", "description", "status"]));
   const visibleExpenses = expenses.filter((e) => contains(e, ["category", "description", "status", "scope"]) || projectName(e.project_id).toLowerCase().includes(query));
