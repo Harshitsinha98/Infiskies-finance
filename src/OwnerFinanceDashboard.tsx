@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import {
   Activity, ArrowRight, Banknote, BriefcaseBusiness, ChartNoAxesCombined,
   CircleDollarSign, RefreshCw, TrendingUp, Wallet, HandCoins
@@ -23,7 +24,7 @@ const money = (value: number) => new Intl.NumberFormat("en-IN", {
 const titleCase = (value?: string | null) => String(value || "—").replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
 function StatCard({ label, value, caption, icon, color }: {
-  label: string; value: string; caption: string; icon: React.ReactNode; color: string;
+  label: string; value: string; caption: string; icon: ReactNode; color: string;
 }) {
   return <div className="stat-card">
     <div className="stat-top"><span>{label}</span><div className={"stat-icon " + color}>{icon}</div></div>
