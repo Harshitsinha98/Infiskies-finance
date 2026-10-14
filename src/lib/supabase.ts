@@ -1,21 +1,17 @@
 import { createClient } from "@supabase/supabase-js";
 
-// The Supabase publishable key is designed for browser use.
-// Database security must be enforced by Postgres RLS, never by relying on this key being secret.
+// Publishable keys are intended for browser use. RLS is the database security boundary.
 const supabaseUrl =
   (import.meta.env.VITE_SUPABASE_URL as string | undefined) ||
-  "https://zdvmlgioavvpraqzfeam.supabase.co";
-const supabaseAnonKey =
+  "https://nrunqihyyijjyihqqlfw.supabase.co";
+const supabaseKey =
+  (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined) ||
   (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) ||
-  "sb_publishable_dseAaFc0eC_U5x1tOjWqAg_cv8TN2kq";
+  "sb_publishable_odMf-IPvCBcV6tUNsjCH4A_KEPKHCiU";
 
-export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
+export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseKey);
 export const supabase = isSupabaseConfigured
-  ? createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: true,
-      },
+  ? createClient(supabaseUrl, supabaseKey, {
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
     })
   : null;
