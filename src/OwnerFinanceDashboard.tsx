@@ -105,7 +105,7 @@ export default function OwnerFinanceDashboard({
   return <div className="owner-finance-dashboard">
     <div className="finance-dashboard-toolbar">
       <div>
-        <span className="eyebrow muted">OWNER FINANCE OVERVIEW</span>
+        <span className="eyebrow muted">OWNER & CO-OWNER FINANCE OVERVIEW</span>
         <p>Track forecast commitments separately from money actually received, paid and spent.</p>
       </div>
       <div className="finance-toolbar-actions">
