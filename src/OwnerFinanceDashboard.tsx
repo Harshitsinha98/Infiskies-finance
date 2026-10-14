@@ -128,7 +128,7 @@ export default function OwnerFinanceDashboard({
         <div className="stat-grid payout-forecast-grid">
           <StatCard label="Projected income" value={money(projectedIncome)} caption={projects.filter((project) => project.status !== "archived").length + " non-archived project(s)"} color="lilac" icon={<TrendingUp size={18} />} />
           <StatCard label="Projected payouts" value={money(projectedPayouts)} caption={activeForecastShares.length + " active share agreement(s)"} color="blue" icon={<CircleDollarSign size={18} />} />
-          <StatCard label="Pending payouts" value={money(pendingPayouts)} caption="Agreement value less amount already paid" color="peach" icon={<HandCoins size={18} />} />
+          <StatCard label="Pending payouts" value={money(pendingPayouts)} caption="Unpaid share balance or open payout request" color="peach" icon={<HandCoins size={18} />} />
           <StatCard label="Projected expenses" value={money(projectedExpenses)} caption={plannedExpenseRows.length + " planned expense(s)"} color="peach" icon={<Wallet size={18} />} />
           <StatCard label="Projected profit" value={money(projectedProfit)} caption="Income − shares − planned expenses" color={projectedProfit >= 0 ? "mint" : "peach"} icon={<ChartNoAxesCombined size={18} />} />
         </div>
