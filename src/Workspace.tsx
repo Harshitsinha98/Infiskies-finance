@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
 import {
-  Activity, ArrowRight, Banknote, BriefcaseBusiness, CalendarDays, Check, CheckCircle2,
+  Activity, ArrowRight, Banknote, Bell, BriefcaseBusiness, CalendarDays, Check, CheckCircle2,
   AlertCircle, ChevronDown, CircleDollarSign, Command, Download, ExternalLink, HandCoins,
   LayoutDashboard, ListTodo, LockKeyhole, LogOut, Menu, Plus, Search, Settings, ShieldCheck,
   TrendingUp, Users, Wallet, X, Pencil, Trash2, RefreshCw, ReceiptText, UserPlus, Copy
@@ -125,7 +125,6 @@ export default function Workspace({ session, role, onSignOut }: { session: Sessi
   const visibleProfiles = profiles.filter((p) => contains(p, ["email", "full_name", "role", "status"]));
   const closeModal = () => { setModal(null); setEditing(null); };
   const openModal = (kind: Kind, row: Row | null = null) => { setError(""); setEditing(row); setModal(kind); };
-  const changePage = (next: string) => { setView(next); setSearch(""); setMenuOpen(false); setNotice(""); setError(""); };
 
   const saveRecord = async (table: string, payload: Row) => {
     const response = editing?.id && modal !== "invite"
