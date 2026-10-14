@@ -205,7 +205,7 @@ export default function Workspace({ session, role, onSignOut }: { session: Sessi
         const amount = num("amount");
         if (!project) throw new Error("Project not found for this agreement.");
         if (amount <= 0) throw new Error("Payout amount must be greater than zero.");
-        const available = availableForNewPayout(member);
+        const available = availableForNewPayout(share);
         if (amount > available) throw new Error("Payout exceeds the unreserved share balance of " + money(available) + ".");
         const response = await db.from("infiskies_payouts").insert({
           project_id: share.project_id, project_member_id: share.id, employee_id: share.employee_id, amount,
