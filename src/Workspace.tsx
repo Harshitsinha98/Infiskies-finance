@@ -191,7 +191,9 @@ export default function Workspace({ session, role, onSignOut }: { session: Sessi
         if (response.error) throw response.error;
         setNotice("Invitation saved. Send the app URL to " + email + "; after signing in with that Google email, their account will be activated.");
         closeModal(); await refreshData();
-      } else if (modal === "permissions" && editing) {\n        await saveRecord("infiskies_profiles", { permissions: { ...permissionDraft } });\n      } else if (modal === "payout" && editing) {
+      } else if (modal === "permissions" && editing) {
+        await saveRecord("infiskies_profiles", { permissions: { ...permissionDraft } });
+      } else if (modal === "payout" && editing) {
         const share = editing;
         const project = projectById.get(share.project_id);
         const amount = num("amount");
