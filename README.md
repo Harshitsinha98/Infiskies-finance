@@ -17,6 +17,7 @@ Private project-finance and work-management workspace for the owner, co-admins a
 - Tasks: create/update, assign, set priority, status, progress and due dates.
 - Team & invitations: active/suspended profile access, scoped co-admin permissions, invitation/revocation and invitee profile activation after matching Google sign-in.
 - Reports: export actual accessible rows as CSV.
+- Employee home: own active share agreements, linked projects, assigned tasks, pending/approved payouts and paid payout totals.
 - Settings and audit activity log.
 - Owner dashboard: Overall and Project-wise tabs with projected income, share payouts, planned expenses, projected profit, and the four actual net metrics. Planned expenses are explicitly separated from actual expenses.
 
@@ -32,6 +33,7 @@ Apply migration files in chronological order to a fresh project:
 3. `supabase/migrations/20261014000300_audit_trail.sql`
 4. `supabase/migrations/20261014000400_invitation_acceptance_rpc.sql`
 5. `supabase/migrations/20261014000500_planned_expenses.sql`
+6. `supabase/migrations/20261014000600_employee_project_visibility.sql`
 
 These migrations have been applied to the current shared BreakIQ project. Do not run an older unprefixed finance schema in the shared project.
 
