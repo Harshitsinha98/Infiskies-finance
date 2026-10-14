@@ -1,10 +1,12 @@
 # Supabase and Google OAuth Setup
 
-Supabase project URL: `https://zdvmlgioavvpraqzfeam.supabase.co`
+Supabase project URL: `https://nrunqihyyijjyihqqlfw.supabase.co`
 
 ## 1. Apply database schema
-Open the Supabase project → SQL Editor. Run the SQL from:
+Open the existing BreakIQ Supabase project → SQL Editor. Run the SQL from:
 `supabase/migrations/20261014000100_initial_schema.sql`
+
+The migration uses `infiskies_*` table, type, and function names so it can coexist with BreakIQ's existing `profiles`, `projects`, and operational tables. Do not run an older unprefixed copy of this migration.
 
 Use a dedicated project and review the migration before applying. It creates the initial tables, role types, helper functions, indexes and RLS policies.
 
