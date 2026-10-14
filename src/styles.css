@@ -58,3 +58,9 @@
 .employee-home .overview-grid{align-items:stretch}
 .employee-home .panel{min-width:0}
 @media(max-width:720px){.employee-dashboard-toolbar{align-items:stretch;flex-direction:column}.employee-dashboard-toolbar>.button{justify-content:center;width:100%}}
+
+/* Five management forecast metrics, including the remaining share payout balance */
+.payout-forecast-grid{grid-template-columns:repeat(5,minmax(0,1fr))}
+@media(max-width:1230px){.payout-forecast-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:700px){.payout-forecast-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+.finance-projection-table table{min-width:1260px}
