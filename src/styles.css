@@ -32,7 +32,7 @@
 .finance-dashboard-toolbar p{font-size:11px;line-height:1.6;color:#898ba0;margin:5px 0 0}
 .finance-toolbar-actions{display:flex;align-items:center;justify-content:flex-end;gap:9px;flex-shrink:0}
 .finance-view-switch{display:inline-flex;align-items:center;gap:3px;padding:4px;background:#f0eff9;border:1px solid #e7e4f8;border-radius:11px}
-.finance-view-switch button{appearance:none;border:0;background:transparent;color:#73758c;border-radius:8px;padding:9px 14px;font:600 11px/1.1 inherit;cursor:pointer;white-space:nowrap;transition:background .16s ease,color .16s ease,box-shadow .16s ease}
+.finance-view-switch button{appearance:none;border:0;background:transparent;color:#73758c;border-radius:8px;padding:9px 14px;font-family:inherit;font-size:11px;font-weight:600;line-height:1.1;cursor:pointer;white-space:nowrap;transition:background .16s ease,color .16s ease,box-shadow .16s ease}
 .finance-view-switch button.selected{background:#fff;color:#5f50d3;box-shadow:0 1px 4px #2a245110}
 .finance-view-switch button:focus-visible{outline:2px solid #8072e6;outline-offset:2px}
 .finance-section{margin-bottom:20px}
