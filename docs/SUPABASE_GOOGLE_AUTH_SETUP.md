@@ -9,6 +9,7 @@ The current BreakIQ Supabase project already has all three Infiskies migrations 
 - `supabase/migrations/20261014000300_audit_trail.sql`
 - `supabase/migrations/20261014000400_invitation_acceptance_rpc.sql`
 - `supabase/migrations/20261014000500_planned_expenses.sql`
+- `supabase/migrations/20261014000600_employee_project_visibility.sql`
 
 Every finance table/type/function uses the `infiskies_*` prefix so it can coexist with BreakIQ's existing `profiles`, `projects` and operations tables. Never run an older unprefixed finance schema in the shared project.
 
