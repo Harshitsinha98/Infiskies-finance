@@ -103,7 +103,6 @@ export default function Workspace({ session, role, onSignOut }: { session: Sessi
   const total = (rows: Row[], field = "amount") => rows.reduce((sum, row) => sum + Number(row[field] || 0), 0);
   const totalProjectValue = total(projects, "contract_value");
   const actualExpenseRows = expenses.filter((e) => e.status !== "void" && e.status !== "planned");
-  const plannedExpenseRows = expenses.filter((e) => e.status === "planned");
   const totalExpenses = total(actualExpenseRows, "amount");
   const totalIncome = total(income.filter((r) => r.status === "received"), "amount");
   const openTasks = tasks.filter((t) => t.status !== "done" && t.status !== "blocked").length;
