@@ -28,9 +28,6 @@ export default function ProjectManagement({ session, role, projects, tasks, prof
     return statusRank(a) - statusRank(b) || String(a.due_date || "9999-12-31").localeCompare(String(b.due_date || "9999-12-31"));
   }), [projects]);
   const selectedProject = visibleProjects.find((project) => project.id === selectedId) || visibleProjects[0] || null;
-  const completedTasks = tasks.filter((task) => task.status === "done").length;
-  const openTasks = tasks.filter((task) => task.status !== "done").length;
-  const overdueTasks = tasks.filter((task) => task.status !== "done" && task.due_at && new Date(task.due_at).getTime() < Date.now());
   const activeProjects = projects.filter((project) => ["active", "planning"].includes(project.status));
   const atRiskProjects = projects.filter((project) => project.health_status === "at_risk" || project.health_status === "blocked" || project.status === "on_hold");
   const overdueProjects = projects.filter((project) => project.due_date && project.due_date < today() && !["completed", "archived"].includes(project.status));
