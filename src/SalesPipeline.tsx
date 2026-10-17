@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import type { Session } from "@supabase/supabase-js";
+import { jsPDF } from "jspdf";
 import { supabase } from "./lib/supabase";
 import {
   AlertCircle, ArrowUpRight, BriefcaseBusiness, CalendarDays, Check, CheckCircle2,
@@ -14,6 +15,8 @@ type MilestoneDraft = { title: string; percentage: string; description: string; 
 const money = (value: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 }).format(Number(value || 0));
 const dateLabel = (value?: string | null) => value ? new Date(value + (String(value).length === 10 ? "T00:00:00" : "")).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—";
 const labelize = (value?: string) => String(value || "").replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+let localProposalGenerator: any;
+
 const defaultMilestones = (): MilestoneDraft[] => [
   { title: "Project advance", percentage: "50", description: "Advance payment to begin work", due_date: "" },
   { title: "Mid-project progress", percentage: "25", description: "Payment at agreed project progress", due_date: "" },
@@ -32,6 +35,10 @@ export default function SalesPipeline({ session, role, projects, onRefresh }: {
   const [milestones, setMilestones] = useState<Row[]>([]);
   const [clientProjects, setClientProjects] = useState<Row[]>([]);
   const [timeline, setTimeline] = useState<Row[]>([]);
+  const [projectUpdates, setProjectUpdates] = useState<Row[]>([]);
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiStatus, setAiStatus] = useState("");
+  const [aiBrief, setAiBrief] = useState({ business_name: "Infiskies", business_overview: "A business-focused digital solutions partner.", services: "Website development, web applications, automation, CRM and business software", differentiators: "Practical delivery, clear milestones, transparent project updates and maintainable solutions", client_problem: "", required_deliverables: "", budget: "", timeline: "", tone: "Professional and consultative", extra_instructions: "" });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -51,26 +58,28 @@ export default function SalesPipeline({ session, role, projects, onRefresh }: {
     setLeads(leadResult.data || []);
     if (leadResult.error) setError(leadResult.error.message);
     if (isOwner) {
-      const [clientResult, proposalResult, linkResult, timelineResult] = await Promise.all([
+      const [clientResult, proposalResult, linkResult, timelineResult, updatesResult] = await Promise.all([
         db.from("infiskies_clients").select("*").order("created_at", { ascending: false }),
         db.from("infiskies_proposals").select("*").order("created_at", { ascending: false }),
         db.from("infiskies_client_projects").select("*").order("created_at", { ascending: false }),
         db.from("infiskies_project_timeline").select("*").order("position", { ascending: true }),
+        db.from("infiskies_project_updates").select("*").order("created_at", { ascending: false }).limit(100),
       ]);
       setClients(clientResult.data || []);
       setProposals(proposalResult.data || []);
       setClientProjects(linkResult.data || []);
       setTimeline(timelineResult.data || []);
+      setProjectUpdates(updatesResult.data || []);
       const proposalIds = (proposalResult.data || []).map((proposal: Row) => proposal.id);
       if (proposalIds.length) {
         const milestoneResult = await db.from("infiskies_proposal_milestones").select("*").in("proposal_id", proposalIds).order("position", { ascending: true });
         setMilestones(milestoneResult.data || []);
         if (milestoneResult.error) setError(milestoneResult.error.message);
       } else setMilestones([]);
-      const adminError = [clientResult.error, proposalResult.error, linkResult.error, timelineResult.error].find(Boolean);
+      const adminError = [clientResult.error, proposalResult.error, linkResult.error, timelineResult.error, updatesResult.error].find(Boolean);
       if (adminError && !leadResult.error) setError(adminError.message);
     } else {
-      setClients([]); setProposals([]); setMilestones([]); setClientProjects([]); setTimeline([]);
+      setClients([]); setProposals([]); setMilestones([]); setClientProjects([]); setTimeline([]); setProjectUpdates([]);
     }
     setLoading(false);
   }, [db, isOwner]);
@@ -181,6 +190,167 @@ export default function SalesPipeline({ session, role, projects, onRefresh }: {
       await refresh();
     } catch (err) { setErrorMessage(err instanceof Error ? err.message : "Could not create the proposal."); }
     finally { setSaving(false); }
+  };
+
+
+  const makeProposalPdf = (proposal: Row, client: Row | undefined, proposalMilestones: Row[], brand = aiBrief) => {
+    const doc = new jsPDF({ unit: "mm", format: "a4" });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const usableWidth = pageWidth - 32;
+    let y = 18;
+    const ensureSpace = (height: number) => {
+      if (y + height > 278) { doc.addPage(); y = 18; }
+    };
+    const textBlock = (value: unknown, size = 10, color: [number, number, number] = [67, 70, 92], lineHeight = 5) => {
+      const text = String(value || "").trim();
+      if (!text) return;
+      doc.setFont("helvetica", "normal"); doc.setFontSize(size); doc.setTextColor(...color);
+      const lines = doc.splitTextToSize(text, usableWidth);
+      ensureSpace(lines.length * lineHeight + 2);
+      doc.text(lines, 16, y); y += lines.length * lineHeight + 3;
+    };
+    const heading = (value: string) => {
+      ensureSpace(12); y += 2;
+      doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(48, 48, 76);
+      doc.text(value, 16, y); y += 6;
+    };
+    doc.setFillColor(39, 38, 74); doc.rect(0, 0, pageWidth, 47, "F");
+    doc.setFillColor(127, 105, 245); doc.roundedRect(16, 11, 9, 9, 2, 2, "F");
+    doc.setFont("helvetica", "bold"); doc.setFontSize(18); doc.setTextColor(255, 255, 255);
+    doc.text(String(brand.business_name || "Infiskies").slice(0, 52), 30, 18);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(213, 214, 235);
+    doc.text("PROPOSAL & ESTIMATE", 16, 32);
+    doc.text(new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }), pageWidth - 16, 32, { align: "right" });
+    y = 58;
+    doc.setFont("helvetica", "bold"); doc.setFontSize(19); doc.setTextColor(39, 39, 65);
+    const titleLines = doc.splitTextToSize(String(proposal.title || "Business Proposal"), usableWidth);
+    doc.text(titleLines, 16, y); y += titleLines.length * 8 + 3;
+    textBlock("Prepared for: " + (client?.full_name || proposal.client_name || "Client"), 10, [85, 87, 111]);
+    if (client?.company_name) textBlock("Company: " + client.company_name, 9, [110, 112, 132]);
+    if (client?.email) textBlock("Email: " + client.email, 9, [110, 112, 132]);
+    ensureSpace(19);
+    doc.setFillColor(245, 243, 255); doc.roundedRect(16, y, usableWidth, 15, 3, 3, "F");
+    doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(91, 80, 166); doc.text("ESTIMATED PROJECT INVESTMENT", 21, y + 5.5);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(13); doc.setTextColor(50, 45, 108);
+    doc.text(money(Number(proposal.total_amount || 0)).replace("₹", "INR "), pageWidth - 21, y + 11, { align: "right" });
+    y += 22;
+    heading("1. About " + (brand.business_name || "Infiskies"));
+    textBlock(brand.business_overview || "A digital solutions partner focused on delivering business outcomes.");
+    textBlock("Services: " + (brand.services || ""), 9, [97, 99, 119]);
+    if (brand.differentiators) textBlock("Why us: " + brand.differentiators, 9, [97, 99, 119]);
+    heading("2. Scope of Work & Deliverables");
+    textBlock(proposal.scope || "Scope and deliverables to be agreed.");
+    if (proposal.terms) { heading("3. Terms, Assumptions & Timeline"); textBlock(proposal.terms); }
+    if (proposalMilestones.length) {
+      heading("4. Payment Milestones");
+      const left = 16, colTitle = 18, colPct = pageWidth - 70, colAmt = pageWidth - 16;
+      ensureSpace(10); doc.setFillColor(245, 246, 251); doc.rect(left, y - 4, usableWidth, 9, "F");
+      doc.setFont("helvetica", "bold"); doc.setFontSize(8); doc.setTextColor(78, 80, 102);
+      doc.text("Milestone", colTitle, y + 1); doc.text("%", colPct, y + 1, { align: "right" }); doc.text("Amount (INR)", colAmt, y + 1, { align: "right" }); y += 11;
+      proposalMilestones.forEach((m) => {
+        const lines = doc.splitTextToSize(String(m.title || "Milestone"), colPct - colTitle - 5);
+        ensureSpace(Math.max(lines.length * 4.5, 7) + 3);
+        doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(69, 71, 91);
+        doc.text(lines, colTitle, y); doc.text(String(Number(m.percentage || 0)) + "%", colPct, y, { align: "right" });
+        doc.text(money(Number(m.amount || 0)).replace("₹", "INR "), colAmt, y, { align: "right" });
+        y += Math.max(lines.length * 4.5, 7) + 2;
+        if (m.due_date) { doc.setFontSize(7.5); doc.setTextColor(130, 132, 151); doc.text("Due: " + dateLabel(m.due_date), colTitle, y); y += 4; }
+        doc.setDrawColor(233, 234, 242); doc.line(left, y, pageWidth - 16, y); y += 3;
+      });
+    }
+    ensureSpace(18); y += 5;
+    doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(128, 130, 149);
+    textBlock("This proposal is prepared from the business and project information supplied by Infiskies. Final scope, commercial terms and delivery dates should be confirmed by both parties before work begins.", 8, [128, 130, 149], 4);
+    const pageCount = doc.getNumberOfPages();
+    for (let page = 1; page <= pageCount; page++) {
+      doc.setPage(page); doc.setDrawColor(230, 231, 241); doc.line(16, 286, pageWidth - 16, 286);
+      doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(143, 146, 163);
+      doc.text((brand.business_name || "Infiskies") + " · Confidential proposal", 16, 292);
+      doc.text("Page " + page + " of " + pageCount, pageWidth - 16, 292, { align: "right" });
+    }
+    const safeName = String(proposal.title || "proposal").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 50) || "proposal";
+    doc.save(safeName + "-infiskies-proposal.pdf");
+  };
+
+  const downloadCurrentProposalPdf = () => {
+    const client = clientById.get(proposalDraft.client_id);
+    const amount = Number(proposalDraft.total_amount || 0);
+    let allocated = 0;
+    const selected = milestoneDrafts.filter((m) => m.title.trim()).map((m, index, rows) => {
+      const val = index === rows.length - 1 ? Math.round((amount - allocated) * 100) / 100 : Math.round(amount * Number(m.percentage || 0)) / 100;
+      if (index < rows.length - 1) allocated += val;
+      return { ...m, amount: val };
+    });
+    makeProposalPdf({ title: proposalDraft.title, scope: proposalDraft.scope, terms: proposalDraft.terms, total_amount: amount }, client, selected);
+  };
+
+  const generateProposalWithAI = async () => {
+    if (!aiBrief.client_problem.trim() && !proposalDraft.scope.trim()) {
+      setAiStatus("Add the client's business problem or project brief first.");
+      return;
+    }
+    setAiGenerating(true);
+    setAiStatus("Loading the open-weight model in your browser. The first run downloads the model and may take a few minutes.");
+    try {
+      const { pipeline } = await import("@huggingface/transformers");
+      if (!localProposalGenerator) {
+        const hasWebGPU = typeof navigator !== "undefined" && "gpu" in navigator;
+        localProposalGenerator = await pipeline(
+          "text-generation",
+          "onnx-community/SmolLM2-360M-Instruct-ONNX",
+          hasWebGPU ? { dtype: "q4f16", device: "webgpu" } as any : { dtype: "q4" } as any
+        );
+      }
+      setAiStatus("Drafting proposal sections from the details you supplied…");
+      const client = clientById.get(proposalDraft.client_id);
+      const lead = leadById.get(proposalDraft.lead_id);
+      const prompt = `You are an experienced B2B proposal writer at ${aiBrief.business_name}. Write a customized, clear English project proposal. Use only details below; do not invent certifications, guarantees or facts.
+Business overview: ${aiBrief.business_overview}
+Services: ${aiBrief.services}
+Differentiators: ${aiBrief.differentiators}
+Client: ${client?.full_name || lead?.contact_name || "Client"}; company: ${client?.company_name || lead?.company_name || "Not provided"}.
+Client's problem and goals: ${aiBrief.client_problem}
+Requested deliverables: ${aiBrief.required_deliverables || proposalDraft.scope || lead?.service_interest || "Recommend a sensible scope"}
+Budget indication: ${aiBrief.budget || "Not provided; do not invent a price"}
+Target timeline: ${aiBrief.timeline || "To be confirmed"}
+Tone: ${aiBrief.tone}
+Additional instructions: ${aiBrief.extra_instructions || "None"}
+Return these exact headings in plain text:
+TITLE: a short proposal title
+EXECUTIVE SUMMARY: one concise paragraph
+SCOPE AND DELIVERABLES: numbered or bulleted detailed deliverables, boundaries and outcomes
+DELIVERY PLAN: sensible phases with timing caveated by the supplied details
+ASSUMPTIONS AND TERMS: dependencies, revision assumptions and items not included where appropriate
+PAYMENT TERMS: use editable milestone language; do not invent percentages or prices
+Keep it specific to this client, commercially useful, concise, and avoid placeholder claims.`;
+      const output = await localProposalGenerator(prompt, { max_new_tokens: 560, temperature: 0.55, do_sample: true, return_full_text: false });
+      let generated = String(output?.[0]?.generated_text || output?.generated_text || "").trim();
+      if (generated.startsWith(prompt)) generated = generated.slice(prompt.length).trim();
+      const section = (name: string, next: string) => {
+        const match = generated.match(new RegExp(name + "\\s*:\\s*([\\s\\S]*?)(?=\\n\\s*" + next + "\\s*:|$)", "i"));
+        return match?.[1]?.trim().replace(/^["']|["']$/g, "") || "";
+      };
+      const title = section("TITLE", "EXECUTIVE SUMMARY");
+      const summary = section("EXECUTIVE SUMMARY", "SCOPE AND DELIVERABLES");
+      const scope = section("SCOPE AND DELIVERABLES", "DELIVERY PLAN");
+      const plan = section("DELIVERY PLAN", "ASSUMPTIONS AND TERMS");
+      const terms = section("ASSUMPTIONS AND TERMS", "PAYMENT TERMS");
+      const payments = section("PAYMENT TERMS", "UNLIKELY_HEADER");
+      const parsedScope = [summary ? "EXECUTIVE SUMMARY\n" + summary : "", scope].filter(Boolean).join("\n\n");
+      if (!generated || generated.length < 50) throw new Error("The local model returned a very short draft. Try adding more business context and retry.");
+      setProposalDraft((old) => ({
+        ...old,
+        title: title.replace(/^[-*\s]+/, "").split("\n")[0].slice(0, 150) || old.title || (lead?.title ? lead.title + " Proposal" : "Custom Project Proposal"),
+        scope: parsedScope || generated,
+        terms: [plan ? "DELIVERY PLAN\n" + plan : "", terms ? "ASSUMPTIONS AND TERMS\n" + terms : "", payments ? "PAYMENT TERMS\n" + payments : ""].filter(Boolean).join("\n\n") || old.terms,
+        total_amount: old.total_amount || aiBrief.budget.replace(/[^0-9.]/g, ""),
+      }));
+      setAiStatus("Draft generated. Review and edit all sections and pricing before sending it to a client.");
+    } catch (err) {
+      setAiStatus((err instanceof Error ? err.message : "AI generation failed.") + " You can still write the proposal manually.");
+    } finally {
+      setAiGenerating(false);
+    }
   };
 
   const createProjectLink = async (event: FormEvent<HTMLFormElement>) => {
@@ -303,18 +473,29 @@ export default function SalesPipeline({ session, role, projects, onRefresh }: {
     </div>}
 
     {tab === "proposals" && isOwner && <div className="pipeline-grid">
-      <section className="panel pipeline-form-panel"><div className="panel-heading"><div><h3><FileText size={17} /> Proposal with estimate</h3><p>Customize scope, contract price and any number of milestone payments.</p></div></div>
+      <section className="panel pipeline-form-panel">
+        <div className="ai-proposal-studio"><div className="ai-proposal-title"><div className="ai-sparkle"><FileText size={17} /></div><div><h3>AI Proposal Studio</h3><p>Open-weight Qwen/SmolLM-style model runs in the browser. Your brief is processed client-side.</p></div></div>
+          <div className="form-grid"><label>Business / agency name<input value={aiBrief.business_name} onChange={(e) => setAiBrief({ ...aiBrief, business_name: e.target.value })} /></label><label>Writing tone<select value={aiBrief.tone} onChange={(e) => setAiBrief({ ...aiBrief, tone: e.target.value })}><option>Professional and consultative</option><option>Premium and executive</option><option>Friendly and clear</option><option>Technical and detailed</option></select></label></div>
+          <label>About the business<textarea rows={2} value={aiBrief.business_overview} onChange={(e) => setAiBrief({ ...aiBrief, business_overview: e.target.value })} placeholder="Tell the AI who you are, your experience, target market and business context." /></label>
+          <label>Services offered<textarea rows={2} value={aiBrief.services} onChange={(e) => setAiBrief({ ...aiBrief, services: e.target.value })} placeholder="All services that your business provides" /></label>
+          <label>Your differentiators<textarea rows={2} value={aiBrief.differentiators} onChange={(e) => setAiBrief({ ...aiBrief, differentiators: e.target.value })} placeholder="Strengths, process, support, quality standards and proven facts" /></label>
+          <label>Client's business problem / objective<textarea rows={3} value={aiBrief.client_problem} onChange={(e) => setAiBrief({ ...aiBrief, client_problem: e.target.value })} required placeholder="What is the client trying to achieve? What is broken or needs to improve?" /></label>
+          <div className="form-grid"><label>Required deliverables<textarea rows={3} value={aiBrief.required_deliverables} onChange={(e) => setAiBrief({ ...aiBrief, required_deliverables: e.target.value })} placeholder="Pages, integrations, workflows, products, support…" /></label><label>Timeline / deadline<input value={aiBrief.timeline} onChange={(e) => setAiBrief({ ...aiBrief, timeline: e.target.value })} placeholder="e.g. 6 weeks; launch by 15 Dec" /><small className="field-hint">Optional rough budget / estimate in INR</small><input type="number" min="0" step="0.01" value={aiBrief.budget} onChange={(e) => setAiBrief({ ...aiBrief, budget: e.target.value })} placeholder="Budget (INR), optional" /></label></div>
+          <label>Additional instructions<textarea rows={2} value={aiBrief.extra_instructions} onChange={(e) => setAiBrief({ ...aiBrief, extra_instructions: e.target.value })} placeholder="Include / avoid certain scope, revision terms, audience, brand voice…" /></label>
+          <div className="ai-proposal-actions"><button type="button" className="button button-primary" onClick={() => void generateProposalWithAI()} disabled={aiGenerating}><FileText size={15} /> {aiGenerating ? "Generating draft…" : "Generate proposal with AI"}</button><span>{aiStatus || "First run downloads an open model and caches it in your browser; subsequent runs should be faster."}</span></div>
+        </div>
+        <div className="panel-heading"><div><h3><FileText size={17} /> Proposal with estimate</h3><p>Review and edit the AI draft, or write manually. You can create a portal proposal or download a PDF to send yourself.</p></div></div>
         {clients.length === 0 ? <div className="inline-empty-hint">Create a client account first in the Client accounts tab.</div> : <form className="record-form" onSubmit={(e) => void createProposal(e)}>
           <div className="form-grid"><label>Client<select value={proposalDraft.client_id} onChange={(e) => setProposalDraft({ ...proposalDraft, client_id: e.target.value })} required><option value="">Select client</option>{clients.filter((client) => client.status === "active").map((client) => <option key={client.id} value={client.id}>{client.full_name} · {client.email}</option>)}</select></label><label>Related sales lead<select value={proposalDraft.lead_id} onChange={(e) => setProposalDraft({ ...proposalDraft, lead_id: e.target.value })}><option value="">None</option>{leads.map((lead) => <option key={lead.id} value={lead.id}>{lead.title} · {lead.contact_name}</option>)}</select></label><label>Existing project (optional)<select value={proposalDraft.project_id} onChange={(e) => setProposalDraft({ ...proposalDraft, project_id: e.target.value })}><option value="">Create project when accepted</option>{projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}</select></label><label>Proposal title<input value={proposalDraft.title} onChange={(e) => setProposalDraft({ ...proposalDraft, title: e.target.value })} required placeholder="Website development proposal" /></label><label>Estimate amount (₹)<input type="number" min="0.01" step="0.01" value={proposalDraft.total_amount} onChange={(e) => setProposalDraft({ ...proposalDraft, total_amount: e.target.value })} required /></label></div>
           <label>Scope of work<textarea rows={4} value={proposalDraft.scope} onChange={(e) => setProposalDraft({ ...proposalDraft, scope: e.target.value })} required placeholder="Deliverables, design, development, integrations…" /></label><label>Terms & assumptions<textarea rows={3} value={proposalDraft.terms} onChange={(e) => setProposalDraft({ ...proposalDraft, terms: e.target.value })} placeholder="Revisions, exclusions, validity and payment terms…" /></label>
           <div className="milestone-editor-head"><div><h4>Payment milestones</h4><p>Percentages must total 100%. Client can pay each milestone in the Client Portal.</p></div><button type="button" className="button button-small button-secondary" onClick={() => setMilestoneDrafts((old) => [...old, { title: "", percentage: "", description: "", due_date: "" }])}><Plus size={14} /> Add milestone</button></div>
           <div className="milestone-editor-list">{milestoneDrafts.map((milestone, index) => <div className="milestone-editor-row" key={index}><div className="milestone-row-number">{index + 1}</div><div className="form-grid milestone-row-fields"><label>Milestone title<input value={milestone.title} onChange={(e) => setMilestoneDrafts((old) => old.map((row, i) => i === index ? { ...row, title: e.target.value } : row))} required /></label><label>Percentage (%)<input type="number" min="0.01" max="100" step="0.001" value={milestone.percentage} onChange={(e) => setMilestoneDrafts((old) => old.map((row, i) => i === index ? { ...row, percentage: e.target.value } : row))} required /></label><label>Due date<input type="date" value={milestone.due_date} onChange={(e) => setMilestoneDrafts((old) => old.map((row, i) => i === index ? { ...row, due_date: e.target.value } : row))} /></label><label>Description<input value={milestone.description} onChange={(e) => setMilestoneDrafts((old) => old.map((row, i) => i === index ? { ...row, description: e.target.value } : row))} placeholder="What is this payment for?" /></label></div>{milestoneDrafts.length > 1 && <button type="button" className="icon-button danger-icon" title="Remove milestone" onClick={() => setMilestoneDrafts((old) => old.filter((_, i) => i !== index))}><X size={15} /></button>}</div>)}</div>
           <div className="milestone-total-row"><span>Milestone allocation</span><b>{milestoneDrafts.reduce((sum, item) => sum + Number(item.percentage || 0), 0).toFixed(2)}%</b><span>Estimated total</span><b>{money(Number(proposalDraft.total_amount || 0))}</b></div>
-          <button className="button button-primary" type="submit" disabled={saving || !clients.length}><Send size={15} /> {saving ? "Preparing proposal…" : "Create and send proposal"}</button>
+          <div className="proposal-form-actions"><button type="button" className="button button-secondary" onClick={downloadCurrentProposalPdf} disabled={!proposalDraft.title.trim() || !proposalDraft.scope.trim()}><FileText size={15} /> Download proposal PDF</button><button className="button button-primary" type="submit" disabled={saving || !clients.length}><Send size={15} /> {saving ? "Preparing proposal…" : "Create and send proposal"}</button></div>
         </form>}
       </section>
       <section className="panel pipeline-records-panel"><div className="panel-heading"><div><h3>Sent proposals</h3><p>{proposals.length} proposal(s), including drafts awaiting completion.</p></div></div>
-        {proposals.length === 0 ? <div className="empty-state"><div className="empty-state-icon"><FileText size={22} /></div><h3>No proposals yet</h3><p>Create an estimate and send it to a client; they can accept it from Client Portal.</p></div> : <div className="pipeline-record-list">{proposals.map((proposal) => <article className="pipeline-record-card" key={proposal.id}><div className="pipeline-record-head"><div><h4>{proposal.title}</h4><p>{clientById.get(proposal.client_id)?.full_name || "Client"} · {projectById.get(proposal.project_id)?.name || "Project created on acceptance"}</p></div><b className="inline-total">{money(proposal.total_amount)}</b></div><div className="pipeline-meta"><span className={"status-pill status-" + proposal.status}>{labelize(proposal.status)}</span><span>{(milestoneByProposal.get(proposal.id) || []).length} payment milestones</span><span>{dateLabel(proposal.created_at)}</span></div><div className="proposal-mini-milestones">{(milestoneByProposal.get(proposal.id) || []).map((milestone) => <span key={milestone.id}>{milestone.title}: {Number(milestone.percentage)}% ({money(milestone.amount)})</span>)}</div>{proposal.status === "draft" && <button className="button button-small button-secondary" disabled={saving} onClick={() => void (async () => { const { error: sendError } = await db.from("infiskies_proposals").update({ status: "sent" }).eq("id", proposal.id); if (sendError) setErrorMessage(sendError.message); else { setSuccessMessage("Proposal sent to the client."); await refresh(); } })()}><Send size={14} /> Send proposal</button>}</article>)}</div>}
+        {proposals.length === 0 ? <div className="empty-state"><div className="empty-state-icon"><FileText size={22} /></div><h3>No proposals yet</h3><p>Create an estimate and send it to a client; they can accept it from Client Portal.</p></div> : <div className="pipeline-record-list">{proposals.map((proposal) => <article className="pipeline-record-card" key={proposal.id}><div className="pipeline-record-head"><div><h4>{proposal.title}</h4><p>{clientById.get(proposal.client_id)?.full_name || "Client"} · {projectById.get(proposal.project_id)?.name || "Project created on acceptance"}</p></div><b className="inline-total">{money(proposal.total_amount)}</b></div><div className="pipeline-meta"><span className={"status-pill status-" + proposal.status}>{labelize(proposal.status)}</span><span>{(milestoneByProposal.get(proposal.id) || []).length} payment milestones</span><span>{dateLabel(proposal.created_at)}</span></div><div className="proposal-mini-milestones">{(milestoneByProposal.get(proposal.id) || []).map((milestone) => <span key={milestone.id}>{milestone.title}: {Number(milestone.percentage)}% ({money(milestone.amount)})</span>)}</div><div className="proposal-card-download"><button type="button" className="button button-small button-secondary" onClick={() => makeProposalPdf(proposal, clientById.get(proposal.client_id), milestoneByProposal.get(proposal.id) || [])}><FileText size={14} /> Download PDF to send manually</button></div>{proposal.status === "draft" && <button className="button button-small button-secondary" disabled={saving} onClick={() => void (async () => { const { error: sendError } = await db.from("infiskies_proposals").update({ status: "sent" }).eq("id", proposal.id); if (sendError) setErrorMessage(sendError.message); else { setSuccessMessage("Proposal sent to the client."); await refresh(); } })()}><Send size={14} /> Send proposal</button>}</article>)}</div>}
       </section>
     </div>}
 
