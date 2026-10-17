@@ -61,8 +61,13 @@ Deno.serve(async (request: Request) => {
     .select("id,client_id,status,title").eq("id", milestone.proposal_id).maybeSingle();
   if (proposalError || !proposal || proposal.client_id !== client.id) return respond({ error: "This milestone does not belong to your client account." }, 403);
   if (proposal.status !== "accepted") return respond({ error: "Accept the proposal before making a milestone payment." }, 409);
-  if (milestone.status === "paid") return respond({ success: true, already_paid: true, payment_id: milestone.razorpay_payment_id, message: "This milestone is already paid." });
-  if (milestone.status !== "unpaid" || Number(milestone.amount) <= 0) return respond({ error: "This milestone is not payable." }, 409);
+  if (body.action === "create_order" && milestone.status === "paid") {
+    return respond({ success: true, already_paid: true, payment_id: milestone.razorpay_payment_id, message: "This milestone is already paid." });
+  }
+  if (milestone.status !== "unpaid" && !(body.action === "verify_payment" && milestone.status === "paid")) {
+    return respond({ error: "This milestone is not payable." }, 409);
+  }
+  if (Number(milestone.amount) <= 0) return respond({ error: "This milestone amount is invalid." }, 409);
 
   const basicAuth = "Basic " + btoa(razorpayKeyId + ":" + razorpayKeySecret);
   if (body.action === "create_order") {
@@ -97,12 +102,21 @@ Deno.serve(async (request: Request) => {
   if (milestone.razorpay_order_id !== orderId) return respond({ error: "This Razorpay order does not match the milestone." }, 409);
   const expected = await checkoutSignature(orderId, paymentId, razorpayKeySecret);
   if (!safeEqual(expected, signature.toLowerCase())) return respond({ error: "Payment signature verification failed. The milestone has not been marked paid." }, 400);
-  if (milestone.status === "paid" && milestone.razorpay_payment_id === paymentId) return respond({ success: true, already_paid: true, payment_id: paymentId });
-  const { data: updated, error: updateError } = await admin.from("infiskies_proposal_milestones")
-    .update({ status: "paid", razorpay_payment_id: paymentId, paid_at: new Date().toISOString() })
-    .eq("id", milestone.id).eq("status", "unpaid").eq("razorpay_order_id", orderId)
-    .select("id,status,paid_at").maybeSingle();
-  if (updateError) return respond({ error: "Payment was verified, but the milestone status could not be updated. Contact the workspace owner." }, 500);
-  if (!updated) return respond({ error: "The milestone changed while this payment was being verified. Refresh the portal to confirm its status." }, 409);
-  return respond({ success: true, milestone_id: updated.id, status: updated.status, paid_at: updated.paid_at, payment_id: paymentId });
+  const { data: reconciliation, error: reconciliationError } = await admin.rpc("infiskies_record_proposal_payment", {
+    p_milestone_id: milestone.id,
+    p_order_id: orderId,
+    p_payment_id: paymentId,
+  });
+  if (reconciliationError || reconciliation?.success !== true) {
+    return respond({ error: reconciliationError?.message || "Payment verified, but the milestone and Income register could not be reconciled." }, 500);
+  }
+  return respond({
+    success: true,
+    milestone_id: milestone.id,
+    status: "paid",
+    paid_at: new Date().toISOString(),
+    payment_id: paymentId,
+    income_id: reconciliation.income_id,
+    income_already_recorded: Boolean(reconciliation.already_recorded),
+  });
 });
