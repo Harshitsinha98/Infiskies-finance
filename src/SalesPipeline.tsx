@@ -604,13 +604,13 @@ export default function SalesPipeline({ session, role, projects, onRefresh }: {
         asSection("PAYMENT TERMS", sections["PAYMENT TERMS"] || ""),
       ].filter(Boolean).join("\n\n");
       const parsedScope = scopeContent || generated;
-      const amountDraft = Number(aiBrief.budget);
       setProposalDraft((old) => ({
         ...old,
         title: parsedTitle.slice(0, 150) || old.title || (lead?.title ? lead.title + " Proposal" : "Custom Project Proposal"),
         scope: parsedScope,
         terms: termsContent || old.terms,
-        total_amount: old.total_amount || (Number.isFinite(amountDraft) && amountDraft > 0 ? String(amountDraft) : ""),
+        // A client's budget is context, not the agency's quote. Keep the estimate owner-controlled.
+        total_amount: old.total_amount,
       }));
       setAiStatus("Personalized draft generated with Qwen2.5 (open-weight, in-browser). Review all claims, pricing, scope, and milestone percentages before sending.");
     } catch (err) {
@@ -748,7 +748,7 @@ export default function SalesPipeline({ session, role, projects, onRefresh }: {
           <label>Services offered<textarea rows={2} value={aiBrief.services} onChange={(e) => setAiBrief({ ...aiBrief, services: e.target.value })} placeholder="All services that your business provides" /></label>
           <label>Your differentiators<textarea rows={2} value={aiBrief.differentiators} onChange={(e) => setAiBrief({ ...aiBrief, differentiators: e.target.value })} placeholder="Strengths, process, support, quality standards and proven facts" /></label>
           <label>Client's business problem / objective<textarea rows={3} value={aiBrief.client_problem} onChange={(e) => setAiBrief({ ...aiBrief, client_problem: e.target.value })} required placeholder="What is the client trying to achieve? What is broken or needs to improve?" /></label>
-          <div className="form-grid"><label>Required deliverables<textarea rows={3} value={aiBrief.required_deliverables} onChange={(e) => setAiBrief({ ...aiBrief, required_deliverables: e.target.value })} placeholder="Pages, integrations, workflows, products, support…" /></label><label>Timeline / deadline<input value={aiBrief.timeline} onChange={(e) => setAiBrief({ ...aiBrief, timeline: e.target.value })} placeholder="e.g. 6 weeks; launch by 15 Dec" /></label><label>Budget indication (INR, optional)<input type="number" min="0" step="0.01" value={aiBrief.budget} onChange={(e) => setAiBrief({ ...aiBrief, budget: e.target.value })} placeholder="Budget (INR)" /><small className="field-hint">The AI will not invent pricing; you must review the final estimate.</small></label></div>
+          <div className="form-grid"><label>Required deliverables<textarea rows={3} value={aiBrief.required_deliverables} onChange={(e) => setAiBrief({ ...aiBrief, required_deliverables: e.target.value })} placeholder="Pages, integrations, workflows, products, support…" /></label><label>Timeline / deadline<input value={aiBrief.timeline} onChange={(e) => setAiBrief({ ...aiBrief, timeline: e.target.value })} placeholder="e.g. 6 weeks; launch by 15 Dec" /></label><label>Budget indication (INR, optional)<input type="number" min="0" step="0.01" value={aiBrief.budget} onChange={(e) => setAiBrief({ ...aiBrief, budget: e.target.value })} placeholder="Budget (INR)" /><small className="field-hint">Client budget is reference context only; it will not auto-fill your quote. Enter and review the final estimate yourself.</small></label></div>
           <label>Additional instructions<textarea rows={2} value={aiBrief.extra_instructions} onChange={(e) => setAiBrief({ ...aiBrief, extra_instructions: e.target.value })} placeholder="Include / avoid certain scope, revision terms, audience, brand voice…" /></label>
           <div className="ai-proposal-actions"><button type="button" className="button button-secondary" onClick={() => void saveBusinessProfile()} disabled={saving}><Save size={15} /> Save business profile</button><button type="button" className="button button-primary" onClick={() => void generateProposalWithAI()} disabled={aiGenerating}><FileText size={15} /> {aiGenerating ? "Generating draft…" : "Generate proposal with AI"}</button><span>{aiStatus || "First use downloads and caches the open-weight model. Your brief stays in this browser; always review AI text, pricing, and terms."}</span></div>
         </div>
