@@ -5,7 +5,7 @@ import { jsPDF } from "jspdf";
 import { supabase } from "./lib/supabase";
 import {
   AlertCircle, ArrowUpRight, BriefcaseBusiness, CalendarDays, Check, CheckCircle2,
-  ClipboardList, Copy, FileText, Plus, RefreshCw, Send, Trash2, Users, X
+  ClipboardList, Copy, FileText, Plus, RefreshCw, Save, Send, Trash2, Users, X
 } from "lucide-react";
 
 type Role = "owner" | "co_admin" | "employee";
@@ -36,8 +36,9 @@ export default function SalesPipeline({ session, role, projects, onRefresh }: {
   const [clientProjects, setClientProjects] = useState<Row[]>([]);
   const [timeline, setTimeline] = useState<Row[]>([]);
   const [aiGenerating, setAiGenerating] = useState(false);
+  const [businessProfileLoaded, setBusinessProfileLoaded] = useState(false);
   const [aiStatus, setAiStatus] = useState("");
-  const [aiBrief, setAiBrief] = useState({ business_name: "Infiskies", business_overview: "A business-focused digital solutions partner.", services: "Website development, web applications, automation, CRM and business software", differentiators: "Practical delivery, clear milestones, transparent project updates and maintainable solutions", client_problem: "", required_deliverables: "", budget: "", timeline: "", tone: "Professional and consultative", extra_instructions: "" });
+  const [aiBrief, setAiBrief] = useState({ business_name: "Infiskies", business_overview: "A business-focused digital solutions partner.", business_email: "", business_phone: "", business_website: "", business_address: "", services: "Website development, web applications, automation, CRM and business software", differentiators: "Practical delivery, clear milestones, transparent project updates and maintainable solutions", client_problem: "", required_deliverables: "", budget: "", timeline: "", tone: "Professional and consultative", extra_instructions: "" });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -82,6 +83,20 @@ export default function SalesPipeline({ session, role, projects, onRefresh }: {
   }, [db, isOwner]);
 
   useEffect(() => { void refresh(); }, [refresh]);
+
+  useEffect(() => {
+    if (!isOwner || !db || businessProfileLoaded) return;
+    let active = true;
+    void (async () => {
+      const { data, error: settingsError } = await db.from("infiskies_app_settings").select("settings").eq("id", "workspace").maybeSingle();
+      if (!active) return;
+      if (settingsError) setError("Could not load saved business profile: " + settingsError.message);
+      const saved = data?.settings?.business_profile;
+      if (saved && typeof saved === "object") setAiBrief((old) => ({ ...old, ...saved }));
+      setBusinessProfileLoaded(true);
+    })();
+    return () => { active = false; };
+  }, [db, isOwner, businessProfileLoaded]);
 
   const clientById = useMemo(() => new Map(clients.map((client) => [client.id, client])), [clients]);
   const leadById = useMemo(() => new Map(leads.map((lead) => [lead.id, lead])), [leads]);
@@ -236,6 +251,8 @@ export default function SalesPipeline({ session, role, projects, onRefresh }: {
     textBlock(brand.business_overview || "A digital solutions partner focused on delivering business outcomes.");
     textBlock("Services: " + (brand.services || ""), 9, [97, 99, 119]);
     if (brand.differentiators) textBlock("Why us: " + brand.differentiators, 9, [97, 99, 119]);
+    const contacts = [brand.business_email, brand.business_phone, brand.business_website, brand.business_address].filter((value) => String(value || "").trim()).join(" · ");
+    if (contacts) textBlock(contacts, 8.5, [97, 99, 119]);
     heading("2. Scope of Work & Deliverables");
     textBlock(proposal.scope || "Scope and deliverables to be agreed.");
     if (proposal.terms) { heading("3. Terms, Assumptions & Timeline"); textBlock(proposal.terms); }
@@ -268,6 +285,33 @@ export default function SalesPipeline({ session, role, projects, onRefresh }: {
     }
     const safeName = String(proposal.title || "proposal").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 50) || "proposal";
     doc.save(safeName + "-infiskies-proposal.pdf");
+  };
+
+  const saveBusinessProfile = async () => {
+    if (!isOwner || !db) return;
+    setSaving(true); setError(""); setNotice("");
+    try {
+      const business_profile = {
+        business_name: aiBrief.business_name.trim(),
+        business_overview: aiBrief.business_overview.trim(),
+        business_email: aiBrief.business_email.trim(),
+        business_phone: aiBrief.business_phone.trim(),
+        business_website: aiBrief.business_website.trim(),
+        business_address: aiBrief.business_address.trim(),
+        services: aiBrief.services.trim(),
+        differentiators: aiBrief.differentiators.trim(),
+      };
+      const { data: settingsRow, error: readError } = await db.from("infiskies_app_settings").select("settings").eq("id", "workspace").maybeSingle();
+      if (readError) throw readError;
+      const settings = { ...(settingsRow?.settings || {}), business_profile };
+      const response = settingsRow
+        ? await db.from("infiskies_app_settings").update({ settings, updated_by: session.user.id }).eq("id", "workspace")
+        : await db.from("infiskies_app_settings").insert({ id: "workspace", settings, updated_by: session.user.id });
+      if (response.error) throw response.error;
+      setNotice("Business profile saved. AI proposals and future PDFs will reuse these details.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save the business profile.");
+    } finally { setSaving(false); }
   };
 
   const downloadCurrentProposalPdf = () => {
@@ -474,13 +518,13 @@ Keep it specific to this client, commercially useful, concise, and avoid placeho
       <section className="panel pipeline-form-panel">
         <div className="ai-proposal-studio"><div className="ai-proposal-title"><div className="ai-sparkle"><FileText size={17} /></div><div><h3>AI Proposal Studio</h3><p>Open-weight Qwen/SmolLM-style model runs in the browser. Your brief is processed client-side.</p></div></div>
           <div className="form-grid"><label>Business / agency name<input value={aiBrief.business_name} onChange={(e) => setAiBrief({ ...aiBrief, business_name: e.target.value })} /></label><label>Writing tone<select value={aiBrief.tone} onChange={(e) => setAiBrief({ ...aiBrief, tone: e.target.value })}><option>Professional and consultative</option><option>Premium and executive</option><option>Friendly and clear</option><option>Technical and detailed</option></select></label></div>
-          <label>About the business<textarea rows={2} value={aiBrief.business_overview} onChange={(e) => setAiBrief({ ...aiBrief, business_overview: e.target.value })} placeholder="Tell the AI who you are, your experience, target market and business context." /></label>
+          <label>About the business<textarea rows={2} value={aiBrief.business_overview} onChange={(e) => setAiBrief({ ...aiBrief, business_overview: e.target.value })} placeholder="Tell the AI who you are, your experience, target market and business context." /></label><div className="form-grid"><label>Business email<input type="email" value={aiBrief.business_email} onChange={(e) => setAiBrief({ ...aiBrief, business_email: e.target.value })} placeholder="contact@yourbusiness.com" /></label><label>Business phone<input value={aiBrief.business_phone} onChange={(e) => setAiBrief({ ...aiBrief, business_phone: e.target.value })} placeholder="Contact number" /></label><label>Website<input value={aiBrief.business_website} onChange={(e) => setAiBrief({ ...aiBrief, business_website: e.target.value })} placeholder="https://yourbusiness.com" /></label><label>Business address<input value={aiBrief.business_address} onChange={(e) => setAiBrief({ ...aiBrief, business_address: e.target.value })} placeholder="Business address (optional)" /></label></div>
           <label>Services offered<textarea rows={2} value={aiBrief.services} onChange={(e) => setAiBrief({ ...aiBrief, services: e.target.value })} placeholder="All services that your business provides" /></label>
           <label>Your differentiators<textarea rows={2} value={aiBrief.differentiators} onChange={(e) => setAiBrief({ ...aiBrief, differentiators: e.target.value })} placeholder="Strengths, process, support, quality standards and proven facts" /></label>
           <label>Client's business problem / objective<textarea rows={3} value={aiBrief.client_problem} onChange={(e) => setAiBrief({ ...aiBrief, client_problem: e.target.value })} required placeholder="What is the client trying to achieve? What is broken or needs to improve?" /></label>
-          <div className="form-grid"><label>Required deliverables<textarea rows={3} value={aiBrief.required_deliverables} onChange={(e) => setAiBrief({ ...aiBrief, required_deliverables: e.target.value })} placeholder="Pages, integrations, workflows, products, support…" /></label><label>Timeline / deadline<input value={aiBrief.timeline} onChange={(e) => setAiBrief({ ...aiBrief, timeline: e.target.value })} placeholder="e.g. 6 weeks; launch by 15 Dec" /><small className="field-hint">Optional rough budget / estimate in INR</small><input type="number" min="0" step="0.01" value={aiBrief.budget} onChange={(e) => setAiBrief({ ...aiBrief, budget: e.target.value })} placeholder="Budget (INR), optional" /></label></div>
+          <div className="form-grid"><label>Required deliverables<textarea rows={3} value={aiBrief.required_deliverables} onChange={(e) => setAiBrief({ ...aiBrief, required_deliverables: e.target.value })} placeholder="Pages, integrations, workflows, products, support…" /></label><label>Timeline / deadline<input value={aiBrief.timeline} onChange={(e) => setAiBrief({ ...aiBrief, timeline: e.target.value })} placeholder="e.g. 6 weeks; launch by 15 Dec" /></label><label>Budget indication (INR, optional)<input type="number" min="0" step="0.01" value={aiBrief.budget} onChange={(e) => setAiBrief({ ...aiBrief, budget: e.target.value })} placeholder="Budget (INR)" /><small className="field-hint">The AI will not invent pricing; you must review the final estimate.</small></label></div>
           <label>Additional instructions<textarea rows={2} value={aiBrief.extra_instructions} onChange={(e) => setAiBrief({ ...aiBrief, extra_instructions: e.target.value })} placeholder="Include / avoid certain scope, revision terms, audience, brand voice…" /></label>
-          <div className="ai-proposal-actions"><button type="button" className="button button-primary" onClick={() => void generateProposalWithAI()} disabled={aiGenerating}><FileText size={15} /> {aiGenerating ? "Generating draft…" : "Generate proposal with AI"}</button><span>{aiStatus || "First run downloads an open model and caches it in your browser; subsequent runs should be faster."}</span></div>
+          <div className="ai-proposal-actions"><button type="button" className="button button-secondary" onClick={() => void saveBusinessProfile()} disabled={saving}><Save size={15} /> Save business profile</button><button type="button" className="button button-primary" onClick={() => void generateProposalWithAI()} disabled={aiGenerating}><FileText size={15} /> {aiGenerating ? "Generating draft…" : "Generate proposal with AI"}</button><span>{aiStatus || "First run downloads an open model and caches it in your browser; subsequent runs should be faster."}</span></div>
         </div>
         <div className="panel-heading"><div><h3><FileText size={17} /> Proposal with estimate</h3><p>Review and edit the AI draft, or write manually. You can create a portal proposal or download a PDF to send yourself.</p></div></div>
         {clients.length === 0 ? <div className="inline-empty-hint">Create a client account first in the Client accounts tab.</div> : <form className="record-form" onSubmit={(e) => void createProposal(e)}>
