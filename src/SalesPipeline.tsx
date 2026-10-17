@@ -79,7 +79,6 @@ export default function SalesPipeline({ session, role, projects, onRefresh }: {
 
   const clientById = useMemo(() => new Map(clients.map((client) => [client.id, client])), [clients]);
   const projectById = useMemo(() => new Map(projects.map((project) => [project.id, project])), [projects]);
-  const leadById = useMemo(() => new Map(leads.map((lead) => [lead.id, lead])), [leads]);
   const milestoneByProposal = useMemo(() => {
     const map = new Map<string, Row[]>();
     milestones.forEach((item) => map.set(item.proposal_id, [...(map.get(item.proposal_id) || []), item]));
