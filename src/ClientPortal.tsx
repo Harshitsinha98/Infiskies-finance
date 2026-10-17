@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "./lib/supabase";
-import { CalendarDays, Check, CheckCircle2, Clock3, FileText, LockKeyhole, LogOut, RefreshCw, Wallet, X, AlertCircle, BriefcaseBusiness } from "lucide-react";
+import { CalendarDays, Check, CheckCircle2, Clock3, FileText, LockKeyhole, LogOut, RefreshCw, Wallet, X, AlertCircle, BriefcaseBusiness, TrendingUp } from "lucide-react";
 
 type Row = Record<string, any>;
 type Client = { id: string; user_id: string; full_name: string; email: string; company_name: string; status: string };
@@ -40,6 +40,7 @@ export default function ClientPortal({ client, onSignOut }: { client: Client; on
   const [milestones, setMilestones] = useState<Row[]>([]);
   const [projects, setProjects] = useState<Row[]>([]);
   const [timeline, setTimeline] = useState<Row[]>([]);
+  const [projectUpdates, setProjectUpdates] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState("");
   const [error, setError] = useState("");
@@ -59,15 +60,17 @@ export default function ClientPortal({ client, onSignOut }: { client: Client; on
     if (linkResult.error && !proposalResult.error) setError(linkResult.error.message);
     const proposalIds = proposalRows.map((proposal: Row) => proposal.id);
     const projectIds = projectLinks.map((link: Row) => link.project_id);
-    const [milestoneResult, projectResult, timelineResult] = await Promise.all([
+    const [milestoneResult, projectResult, timelineResult, projectUpdatesResult] = await Promise.all([
       proposalIds.length ? db.from("infiskies_proposal_milestones").select("*").in("proposal_id", proposalIds).order("position", { ascending: true }) : Promise.resolve({ data: [], error: null }),
-      projectIds.length ? db.from("infiskies_projects").select("id,name,client_name,description,status,contract_value,start_date,due_date").in("id", projectIds) : Promise.resolve({ data: [], error: null }),
+      projectIds.length ? db.from("infiskies_projects").select("id,name,client_name,description,status,contract_value,start_date,due_date,progress_percent,health_status").in("id", projectIds) : Promise.resolve({ data: [], error: null }),
       projectIds.length ? db.from("infiskies_project_timeline").select("*").in("project_id", projectIds).eq("visible_to_client", true).order("position", { ascending: true }) : Promise.resolve({ data: [], error: null }),
+      projectIds.length ? db.from("infiskies_project_updates").select("*").in("project_id", projectIds).eq("visible_to_client", true).order("created_at", { ascending: false }) : Promise.resolve({ data: [], error: null }),
     ]);
     setMilestones(milestoneResult.data || []);
     setProjects(projectResult.data || []);
     setTimeline(timelineResult.data || []);
-    const otherError = [milestoneResult.error, projectResult.error, timelineResult.error].find(Boolean);
+    setProjectUpdates(projectUpdatesResult.data || []);
+    const otherError = [milestoneResult.error, projectResult.error, timelineResult.error, projectUpdatesResult.error].find(Boolean);
     if (otherError && !proposalResult.error && !linkResult.error) setError(otherError.message);
     setLoading(false);
   }, [db, client.id]);
@@ -80,6 +83,11 @@ export default function ClientPortal({ client, onSignOut }: { client: Client; on
     return grouped;
   }, [milestones]);
   const projectById = useMemo(() => new Map(projects.map((project) => [project.id, project])), [projects]);
+  const updatesByProject = useMemo(() => {
+    const grouped = new Map<string, Row[]>();
+    projectUpdates.forEach((update) => grouped.set(update.project_id, [...(grouped.get(update.project_id) || []), update]));
+    return grouped;
+  }, [projectUpdates]);
   const timelineByProject = useMemo(() => {
     const grouped = new Map<string, Row[]>();
     timeline.forEach((step) => grouped.set(step.project_id, [...(grouped.get(step.project_id) || []), step]));
@@ -166,7 +174,7 @@ export default function ClientPortal({ client, onSignOut }: { client: Client; on
       <section className="client-portal-section"><div className="client-portal-section-head"><div><h2><BriefcaseBusiness size={18} /> My projects</h2><p>Only projects explicitly assigned to this client account are displayed.</p></div></div>
         {projects.length === 0 ? <div className="client-portal-empty"><BriefcaseBusiness size={24} /><h3>No project linked yet</h3><p>Once you accept a proposal or the owner links a project to your account, project details will appear here.</p></div> : <div className="client-project-grid">{projects.map((project) => {
           const steps = timelineByProject.get(project.id) || [];
-          return <article className="client-project-card" key={project.id}><div className="client-project-card-head"><div className="client-project-icon"><BriefcaseBusiness size={18} /></div><span className={"status-pill status-" + project.status}>{labelize(project.status)}</span></div><h3>{project.name}</h3><p>{project.description || "Project details provided by Infiskies."}</p><div className="client-project-facts"><div><small>Start date</small><b>{dateLabel(project.start_date)}</b></div><div><small>Target handover</small><b>{dateLabel(project.due_date)}</b></div><div><small>Contract value</small><b>{money(project.contract_value)}</b></div></div><div className="client-timeline"><h4><CalendarDays size={16} /> Project timeline</h4>{steps.length === 0 ? <p className="client-timeline-empty">The project timeline will appear when the owner adds milestones.</p> : <ol>{steps.map((step) => <li key={step.id} className={"client-timeline-step step-" + step.status}><div className="client-timeline-dot" /><div className="client-timeline-step-copy"><b>{step.title}</b><p>{step.description || "Project phase"}</p><small>{dateLabel(step.due_date)} · {labelize(step.status)}</small></div></li>)}</ol>}</div></article>;
+          return <article className="client-project-card" key={project.id}><div className="client-project-card-head"><div className="client-project-icon"><BriefcaseBusiness size={18} /></div><span className={"status-pill status-" + project.status}>{labelize(project.status)}</span></div><h3>{project.name}</h3><p>{project.description || "Project details provided by Infiskies."}</p><div className="client-project-progress-wrap"><div><span>Project progress</span><b>{Number(project.progress_percent || 0)}%</b></div><div className="client-project-progress-track"><span style={{ width: Math.max(0, Math.min(100, Number(project.progress_percent || 0))) + "%" }} /></div></div><div className="client-project-facts"><div><small>Start date</small><b>{dateLabel(project.start_date)}</b></div><div><small>Target handover</small><b>{dateLabel(project.due_date)}</b></div><div><small>Contract value</small><b>{money(project.contract_value)}</b></div></div><div className="client-visible-updates"><h4><TrendingUp size={16} /> Latest project updates</h4>{(updatesByProject.get(project.id) || []).length === 0 ? <p className="client-timeline-empty">No client-visible updates yet. The owner will publish updates here as work progresses.</p> : <div className="client-visible-update-list">{(updatesByProject.get(project.id) || []).map((update) => <article key={update.id}><b>{update.headline}</b><p>{update.body || "Project status updated."}</p><small>{dateLabel(update.created_at)}{update.progress_percent != null ? " · " + Number(update.progress_percent) + "% complete" : ""}</small></article>)}</div>}</div><div className="client-timeline"><h4><CalendarDays size={16} /> Project timeline</h4>{steps.length === 0 ? <p className="client-timeline-empty">The project timeline will appear when the owner adds milestones.</p> : <ol>{steps.map((step) => <li key={step.id} className={"client-timeline-step step-" + step.status}><div className="client-timeline-dot" /><div className="client-timeline-step-copy"><b>{step.title}</b><p>{step.description || "Project phase"}</p><small>{dateLabel(step.due_date)} · {labelize(step.status)}</small></div></li>)}</ol>}</div></article>;
         })}</div>}
       </section>
       <footer className="client-portal-footer"><span>Client Portal · Infiskies</span><span><LockKeyhole size={12} /> Your portal only shows your assigned project records.</span></footer>
