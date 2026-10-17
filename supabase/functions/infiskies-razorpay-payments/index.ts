@@ -102,6 +102,23 @@ Deno.serve(async (request: Request) => {
   if (milestone.razorpay_order_id !== orderId) return respond({ error: "This Razorpay order does not match the milestone." }, 409);
   const expected = await checkoutSignature(orderId, paymentId, razorpayKeySecret);
   if (!safeEqual(expected, signature.toLowerCase())) return respond({ error: "Payment signature verification failed. The milestone has not been marked paid." }, 400);
+
+  // Verify the payment state directly with Razorpay so authorized-but-not-captured payments aren't counted as income.
+  const paymentLookup = await fetch("https://api.razorpay.com/v1/payments/" + encodeURIComponent(paymentId), {
+    method: "GET",
+    headers: { "Authorization": basicAuth, "Content-Type": "application/json" },
+  });
+  const paymentDetails = await paymentLookup.json().catch(() => ({}));
+  if (!paymentLookup.ok || !paymentDetails.id) {
+    return respond({ error: "Razorpay payment details could not be verified. Income has not been recorded." }, 502);
+  }
+  if (paymentDetails.order_id !== orderId || Number(paymentDetails.amount) !== Math.round(Number(milestone.amount) * 100) || String(paymentDetails.currency || "").toUpperCase() !== "INR") {
+    return respond({ error: "Razorpay payment order, amount or currency does not match this milestone." }, 409);
+  }
+  if (paymentDetails.status !== "captured") {
+    return respond({ error: "Razorpay has not captured this payment yet. The milestone will be marked paid and added to Income only after capture." }, 409);
+  }
+
   const { data: reconciliation, error: reconciliationError } = await admin.rpc("infiskies_record_proposal_payment", {
     p_milestone_id: milestone.id,
     p_order_id: orderId,
