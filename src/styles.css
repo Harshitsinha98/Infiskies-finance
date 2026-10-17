@@ -229,7 +229,7 @@
 .ai-proposal-actions{display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap}
 .ai-proposal-actions>span{flex:1 1 210px;font-size:10px;line-height:1.6;color:#8588a0}
 .proposal-form-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.proposal-card-download{display:flex;justify-content:flex-start}
+.proposal-card-download{display:flex;justify-content:flex-start;gap:8px;flex-wrap:wrap}
 .project-management-page{display:grid;gap:18px;min-width:0}
 .project-management-heading{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;flex-wrap:wrap}
 .project-management-heading h2{font-size:23px;letter-spacing:-.65px;color:#2b2d43;margin:5px 0 6px}

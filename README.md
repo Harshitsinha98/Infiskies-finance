@@ -17,6 +17,8 @@ Private project-finance and work-management workspace for the owner, co-admins a
 - Tasks: create/update, assign, set priority, status, progress and due dates.
 - Team & invitations: active/suspended profile access, scoped co-admin permissions, invitation/revocation and invitee profile activation after matching Google sign-in.
 - Reports: export actual accessible rows as CSV.
+- AI Proposal Studio: generate client-specific proposal drafts using an open-weight Qwen model in the browser, with a lightweight SmolLM2 fallback.
+- Personalized PDF generator: preview or download branded A4 proposals with client requirements, scope, delivery assumptions, pricing and payment milestones.
 - Employee home: own active share agreements, linked projects, assigned tasks, pending/approved payouts and paid payout totals.
 - Settings and audit activity log.
 - Owner dashboard: Overall and Project-wise tabs with projected income, share payouts, planned expenses, projected profit, and the four actual net metrics. Planned expenses are explicitly separated from actual expenses.
