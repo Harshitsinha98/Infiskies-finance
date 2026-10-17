@@ -4,6 +4,7 @@ import { ArrowRight, BadgeCheck, LockKeyhole, Settings, ShieldCheck, Sparkles } 
 import type { Session } from "@supabase/supabase-js";
 import { isSupabaseConfigured, supabase } from "./lib/supabase";
 import Workspace from "./Workspace";
+import ClientPortal from "./ClientPortal";
 
 type Role = "owner" | "co_admin" | "employee";
 
@@ -33,6 +34,7 @@ export default function App() {
   const [authorized, setAuthorized] = useState(false);
   const [profileChecked, setProfileChecked] = useState(false);
   const [authError, setAuthError] = useState("");
+  const [clientAccount, setClientAccount] = useState<any>(null);
 
   useEffect(() => {
     if (!supabase) { setAuthChecked(true); return; }
@@ -53,16 +55,38 @@ export default function App() {
     let active = true;
     async function check() {
       setAuthorized(false);
+      setClientAccount(null);
       setProfileChecked(false);
       if (!session || !supabase) { setProfileChecked(true); return; }
-      let { data, error } = await (supabase as any).from("infiskies_profiles").select("role,status,email").eq("id", session.user.id).maybeSingle();
+
+      // Client identity is checked first; clients never fall through into the employee workspace.
+      const clientLookup = await (supabase as any).from("infiskies_clients")
+        .select("id,user_id,full_name,email,company_name,status")
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+      if (!active) return;
+      if (clientLookup.data) {
+        if (clientLookup.data.status === "active") {
+          setClientAccount(clientLookup.data);
+          setAuthorized(true);
+        } else {
+          setAuthorized(false);
+        }
+        setProfileChecked(true);
+        return;
+      }
+
+      let { data, error } = await (supabase as any).from("infiskies_profiles")
+        .select("role,status,email")
+        .eq("id", session.user.id)
+        .maybeSingle();
       if (!active) return;
       if (!error && !data) {
-        // The RPC activates only a valid, unexpired invitation matching this authenticated user's JWT email.
         const { data: invitationAccepted } = await (supabase as any).rpc("infiskies_accept_my_invitation");
         if (!active) return;
         if (invitationAccepted) {
-          const retry = await (supabase as any).from("infiskies_profiles").select("role,status,email").eq("id", session.user.id).maybeSingle();
+          const retry = await (supabase as any).from("infiskies_profiles")
+            .select("role,status,email").eq("id", session.user.id).maybeSingle();
           data = retry.data;
           error = retry.error;
         }
@@ -90,6 +114,7 @@ export default function App() {
   const signOut = async () => {
     if (supabase) await supabase.auth.signOut();
     setSession(null);
+    setClientAccount(null);
     setAuthorized(false);
     setProfileChecked(true);
   };
@@ -103,6 +128,7 @@ export default function App() {
     if (error) setAuthError("Invalid username/email or password, or this account has been disabled.");
   })()} />;
   if (!profileChecked) return <Loading text="Checking workspace access…" />;
+  if (clientAccount && authorized) return <ClientPortal session={session} client={clientAccount} onSignOut={() => void signOut()} />;
   if (!authorized) return <AccessDenied email={session.user.email || "This account"} onSignOut={() => void signOut()} />;
   return <Workspace session={session} role={role} onSignOut={() => void signOut()} />;
 }
