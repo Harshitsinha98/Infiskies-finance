@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "./lib/supabase";
-import { AlertCircle, AlertTriangle, ArrowRight, CalendarClock, CheckCircle2, CircleDot, Clock3, Flag, Plus, RefreshCw, Save, ShieldAlert, TrendingUp } from "lucide-react";
+import { AlertCircle, CalendarClock, CheckCircle2, CircleDot, Clock3, Flag, Plus, RefreshCw, Save, ShieldAlert, TrendingUp } from "lucide-react";
 
 type Row = Record<string, any>;
 type Role = "owner" | "co_admin" | "employee";
