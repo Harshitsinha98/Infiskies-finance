@@ -35,7 +35,6 @@ export default function SalesPipeline({ session, role, projects, onRefresh }: {
   const [milestones, setMilestones] = useState<Row[]>([]);
   const [clientProjects, setClientProjects] = useState<Row[]>([]);
   const [timeline, setTimeline] = useState<Row[]>([]);
-  const [projectUpdates, setProjectUpdates] = useState<Row[]>([]);
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiStatus, setAiStatus] = useState("");
   const [aiBrief, setAiBrief] = useState({ business_name: "Infiskies", business_overview: "A business-focused digital solutions partner.", services: "Website development, web applications, automation, CRM and business software", differentiators: "Practical delivery, clear milestones, transparent project updates and maintainable solutions", client_problem: "", required_deliverables: "", budget: "", timeline: "", tone: "Professional and consultative", extra_instructions: "" });
@@ -58,28 +57,26 @@ export default function SalesPipeline({ session, role, projects, onRefresh }: {
     setLeads(leadResult.data || []);
     if (leadResult.error) setError(leadResult.error.message);
     if (isOwner) {
-      const [clientResult, proposalResult, linkResult, timelineResult, updatesResult] = await Promise.all([
+      const [clientResult, proposalResult, linkResult, timelineResult] = await Promise.all([
         db.from("infiskies_clients").select("*").order("created_at", { ascending: false }),
         db.from("infiskies_proposals").select("*").order("created_at", { ascending: false }),
         db.from("infiskies_client_projects").select("*").order("created_at", { ascending: false }),
         db.from("infiskies_project_timeline").select("*").order("position", { ascending: true }),
-        db.from("infiskies_project_updates").select("*").order("created_at", { ascending: false }).limit(100),
       ]);
       setClients(clientResult.data || []);
       setProposals(proposalResult.data || []);
       setClientProjects(linkResult.data || []);
       setTimeline(timelineResult.data || []);
-      setProjectUpdates(updatesResult.data || []);
       const proposalIds = (proposalResult.data || []).map((proposal: Row) => proposal.id);
       if (proposalIds.length) {
         const milestoneResult = await db.from("infiskies_proposal_milestones").select("*").in("proposal_id", proposalIds).order("position", { ascending: true });
         setMilestones(milestoneResult.data || []);
         if (milestoneResult.error) setError(milestoneResult.error.message);
       } else setMilestones([]);
-      const adminError = [clientResult.error, proposalResult.error, linkResult.error, timelineResult.error, updatesResult.error].find(Boolean);
+      const adminError = [clientResult.error, proposalResult.error, linkResult.error, timelineResult.error].find(Boolean);
       if (adminError && !leadResult.error) setError(adminError.message);
     } else {
-      setClients([]); setProposals([]); setMilestones([]); setClientProjects([]); setTimeline([]); setProjectUpdates([]);
+      setClients([]); setProposals([]); setMilestones([]); setClientProjects([]); setTimeline([]);
     }
     setLoading(false);
   }, [db, isOwner]);
@@ -87,6 +84,7 @@ export default function SalesPipeline({ session, role, projects, onRefresh }: {
   useEffect(() => { void refresh(); }, [refresh]);
 
   const clientById = useMemo(() => new Map(clients.map((client) => [client.id, client])), [clients]);
+  const leadById = useMemo(() => new Map(leads.map((lead) => [lead.id, lead])), [leads]);
   const projectById = useMemo(() => new Map(projects.map((project) => [project.id, project])), [projects]);
   const milestoneByProposal = useMemo(() => {
     const map = new Map<string, Row[]>();
