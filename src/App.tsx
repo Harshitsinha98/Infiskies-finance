@@ -128,7 +128,7 @@ export default function App() {
     if (error) setAuthError("Invalid username/email or password, or this account has been disabled.");
   })()} />;
   if (!profileChecked) return <Loading text="Checking workspace access…" />;
-  if (clientAccount && authorized) return <ClientPortal session={session} client={clientAccount} onSignOut={() => void signOut()} />;
+  if (clientAccount && authorized) return <ClientPortal client={clientAccount} onSignOut={() => void signOut()} />;
   if (!authorized) return <AccessDenied email={session.user.email || "This account"} onSignOut={() => void signOut()} />;
   return <Workspace session={session} role={role} onSignOut={() => void signOut()} />;
 }
