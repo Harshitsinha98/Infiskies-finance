@@ -170,7 +170,7 @@ export default function Workspace({ session, role, onSignOut }: { session: Sessi
           progress_percent: Math.max(0, Math.min(100, num("progress_percent"))),
           health_status: val("health_status") || "on_track", risk_notes: val("risk_notes"),
           latest_update: val("latest_update"), next_update_at: nullable("next_update_at"),
-          created_by: session.user.id
+          created_by: editing?.created_by || session.user.id
         });
       } else if (modal === "expense") {
         const scope = val("scope");
