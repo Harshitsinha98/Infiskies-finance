@@ -35,15 +35,16 @@ Deno.serve(async (request: Request) => {
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
   if (!token) return respond({ error: "Sign in to the client portal first." }, 401);
   const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } });
-  const { data: vaultCredentials, error: vaultError } = await admin.rpc("infiskies_get_razorpay_secrets");
-  const razorpayKeyId = String(vaultCredentials?.key_id || Deno.env.get("RAZORPAY_KEY_ID") || "");
-  const razorpayKeySecret = String(vaultCredentials?.key_secret || Deno.env.get("RAZORPAY_KEY_SECRET") || "");
-  if (vaultError) return respond({ error: "Unable to load Razorpay credentials from secure server storage." }, 500);
   const { data: authData, error: authError } = await admin.auth.getUser(token);
   if (authError || !authData.user) return respond({ error: "Your session is invalid or expired." }, 401);
   const { data: client, error: clientError } = await admin.from("infiskies_clients")
     .select("id,user_id,full_name,email,status").eq("user_id", authData.user.id).maybeSingle();
   if (clientError || !client || client.status !== "active") return respond({ error: "An active client portal account is required." }, 403);
+
+  const { data: vaultCredentials, error: vaultError } = await admin.rpc("infiskies_get_razorpay_secrets");
+  const razorpayKeyId = String(vaultCredentials?.key_id || Deno.env.get("RAZORPAY_KEY_ID") || "");
+  const razorpayKeySecret = String(vaultCredentials?.key_secret || Deno.env.get("RAZORPAY_KEY_SECRET") || "");
+  if (vaultError) return respond({ error: "Unable to load Razorpay credentials from secure server storage." }, 500);
 
   let body: Record<string, unknown>;
   try { body = await request.json(); } catch { return respond({ error: "Request body must be valid JSON." }, 400); }
