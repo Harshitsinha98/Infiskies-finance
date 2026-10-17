@@ -1,8 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { Session } from "@supabase/supabase-js";
 import { supabase } from "./lib/supabase";
-import { ArrowDownRight, ArrowUpRight, CalendarDays, Check, CheckCircle2, Clock3, FileText, LockKeyhole, LogOut, RefreshCw, Wallet, X, AlertCircle, BriefcaseBusiness } from "lucide-react";
+import { CalendarDays, Check, CheckCircle2, Clock3, FileText, LockKeyhole, LogOut, RefreshCw, Wallet, X, AlertCircle, BriefcaseBusiness } from "lucide-react";
 
 type Row = Record<string, any>;
 type Client = { id: string; user_id: string; full_name: string; email: string; company_name: string; status: string };
@@ -35,11 +34,10 @@ async function ensureRazorpayScript(): Promise<boolean> {
   });
 }
 
-export default function ClientPortal({ session, client, onSignOut }: { session: Session; client: Client; onSignOut: () => void }) {
+export default function ClientPortal({ client, onSignOut }: { client: Client; onSignOut: () => void }) {
   const db = supabase as any;
   const [proposals, setProposals] = useState<Row[]>([]);
   const [milestones, setMilestones] = useState<Row[]>([]);
-  const [links, setLinks] = useState<Row[]>([]);
   const [projects, setProjects] = useState<Row[]>([]);
   const [timeline, setTimeline] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,7 +56,6 @@ export default function ClientPortal({ session, client, onSignOut }: { session: 
       db.from("infiskies_client_projects").select("id,client_id,project_id,proposal_id").eq("client_id", client.id),
     ]);
     const projectLinks = linkResult.data || [];
-    setLinks(projectLinks);
     if (linkResult.error && !proposalResult.error) setError(linkResult.error.message);
     const proposalIds = proposalRows.map((proposal: Row) => proposal.id);
     const projectIds = projectLinks.map((link: Row) => link.project_id);
