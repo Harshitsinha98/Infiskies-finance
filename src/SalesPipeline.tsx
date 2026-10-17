@@ -184,12 +184,54 @@ export default function SalesPipeline({ session, role, projects, onRefresh }: {
   };
 
   const createProjectLink = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault(); setSaving(true); setError(""); setNotice("");
-    if (!linkDraft.client_id || !linkDraft.project_id) { setErrorMessage("Choose both a client and a project."); setSaving(false); return; }
-    const { error: linkError } = await db.from("infiskies_client_projects").insert({ client_id: linkDraft.client_id, project_id: linkDraft.project_id });
-    if (linkError) setErrorMessage(linkError.message);
-    else { setSuccessMessage("Project linked. Only this client account can see its client-visible timeline and project portal details."); setLinkDraft({ client_id: "", project_id: "" }); await refresh(); }
-    setSaving(false);
+    event.preventDefault();
+    setSaving(true); setError(""); setNotice("");
+    try {
+      if (!linkDraft.client_id || !linkDraft.project_id) throw new Error("Choose both a client and a project.");
+
+      // A project can belong to one client only. Proposal acceptance may have linked it already.
+      const { data: existingLink, error: lookupError } = await db
+        .from("infiskies_client_projects")
+        .select("id,client_id")
+        .eq("project_id", linkDraft.project_id)
+        .maybeSingle();
+      if (lookupError) throw lookupError;
+
+      if (existingLink) {
+        if (existingLink.client_id === linkDraft.client_id) {
+          setSuccessMessage("This project is already linked to the selected client. You can add or edit its timeline below.");
+          setLinkDraft({ client_id: "", project_id: "" });
+          await refresh();
+          return;
+        }
+        const existingClient = clientById.get(existingLink.client_id);
+        setErrorMessage(
+          "This project is already linked to " + (existingClient?.full_name || "another client") +
+          ". To protect client privacy, one project cannot be linked to two client accounts."
+        );
+        await refresh();
+        return;
+      }
+
+      const { error: linkError } = await db
+        .from("infiskies_client_projects")
+        .insert({ client_id: linkDraft.client_id, project_id: linkDraft.project_id });
+      if (linkError) {
+        if (linkError.code === "23505") {
+          setErrorMessage("This project was linked just now. Refresh the page and add its timeline from the Project timeline section.");
+          await refresh();
+          return;
+        }
+        throw linkError;
+      }
+      setSuccessMessage("Project linked. Only this client account can see its client-visible timeline and project portal details.");
+      setLinkDraft({ client_id: "", project_id: "" });
+      await refresh();
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : "Could not link this project.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const createTimelineStep = async (event: FormEvent<HTMLFormElement>) => {
@@ -279,7 +321,7 @@ export default function SalesPipeline({ session, role, projects, onRefresh }: {
     {tab === "timeline" && isOwner && <div className="pipeline-grid">
       <div className="pipeline-column">
         <section className="panel pipeline-form-panel"><div className="panel-heading"><div><h3><BriefcaseBusiness size={17} /> Link client to a project</h3><p>Use this for projects that already exist. Each project can be linked to one client portal account.</p></div></div>
-          <form className="record-form" onSubmit={(e) => void createProjectLink(e)}><label>Client<select value={linkDraft.client_id} onChange={(e) => setLinkDraft({ ...linkDraft, client_id: e.target.value })} required><option value="">Select client</option>{clients.map((client) => <option key={client.id} value={client.id}>{client.full_name} · {client.email}</option>)}</select></label><label>Project<select value={linkDraft.project_id} onChange={(e) => setLinkDraft({ ...linkDraft, project_id: e.target.value })} required><option value="">Select project</option>{projects.filter((project) => !linkedProjectIds.has(project.id) || clientProjects.some((link) => link.project_id === project.id && link.client_id === linkDraft.client_id)).map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}</select></label><button type="submit" className="button button-primary" disabled={saving}><Check size={16} /> Link project</button></form>
+          <form className="record-form" onSubmit={(e) => void createProjectLink(e)}><label>Client<select value={linkDraft.client_id} onChange={(e) => setLinkDraft({ ...linkDraft, client_id: e.target.value })} required><option value="">Select client</option>{clients.map((client) => <option key={client.id} value={client.id}>{client.full_name} · {client.email}</option>)}</select></label><label>Project<select value={linkDraft.project_id} onChange={(e) => setLinkDraft({ ...linkDraft, project_id: e.target.value })} required><option value="">Select project</option>{projects.filter((project) => !linkedProjectIds.has(project.id)).map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}</select></label><button type="submit" className="button button-primary" disabled={saving}><Check size={16} /> Link project</button></form>
         </section>
         <section className="panel pipeline-form-panel"><div className="panel-heading"><div><h3><CalendarDays size={17} /> Add timeline step</h3><p>Only the linked client can see steps marked visible to client.</p></div></div>
           <form className="record-form" onSubmit={(e) => void createTimelineStep(e)}><label>Project<select value={timelineDraft.project_id} onChange={(e) => setTimelineDraft({ ...timelineDraft, project_id: e.target.value })} required><option value="">Select a linked project</option>{projects.filter((project) => linkedProjectIds.has(project.id)).map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}</select></label><label>Milestone / phase<input value={timelineDraft.title} onChange={(e) => setTimelineDraft({ ...timelineDraft, title: e.target.value })} required placeholder="UI design approval" /></label><label>Description<textarea rows={3} value={timelineDraft.description} onChange={(e) => setTimelineDraft({ ...timelineDraft, description: e.target.value })} placeholder="Phase details and deliverables" /></label><div className="form-grid"><label>Due date<input type="date" value={timelineDraft.due_date} onChange={(e) => setTimelineDraft({ ...timelineDraft, due_date: e.target.value })} /></label><label>Status<select value={timelineDraft.status} onChange={(e) => setTimelineDraft({ ...timelineDraft, status: e.target.value })}><option value="upcoming">Upcoming</option><option value="in_progress">In progress</option><option value="completed">Completed</option><option value="blocked">Blocked</option></select></label></div><label className="inline-checkbox"><input type="checkbox" checked={timelineDraft.visible_to_client} onChange={(e) => setTimelineDraft({ ...timelineDraft, visible_to_client: e.target.checked })} /> Visible in Client Portal</label><button type="submit" className="button button-primary" disabled={saving || !projects.some((project) => linkedProjectIds.has(project.id))}><Plus size={16} /> Add timeline step</button></form>
