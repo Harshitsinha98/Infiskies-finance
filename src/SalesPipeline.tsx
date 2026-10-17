@@ -493,7 +493,7 @@ export default function SalesPipeline({ session, role, projects, onRefresh }: {
           setAiStatus("Trying the lightweight SmolLM2 fallback on this browser…");
           localProposalGenerator = await pipeline(
             "text-generation",
-            "onnx-community/SmolLM2-360M-ONNX",
+            "onnx-community/SmolLM2-360M-Instruct-ONNX",
             { dtype: "q4" } as any
           );
           if (!localProposalGenerator) throw primaryModelError;
