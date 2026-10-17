@@ -452,9 +452,35 @@ export default function SalesPipeline({ session, role, projects, onRefresh }: {
   const generateCurrentProposalPdf = (mode: "download" | "preview" = "download") => {
     const client = clientById.get(proposalDraft.client_id);
     const amount = Number(proposalDraft.total_amount || 0);
+    const totalPercentage = milestoneDrafts.reduce((sum, item) => sum + Number(item.percentage || 0), 0);
+    if (!proposalDraft.client_id || !client) {
+      setErrorMessage("Select the client this proposal is prepared for.");
+      return;
+    }
+    if (!proposalDraft.title.trim() || !proposalDraft.scope.trim()) {
+      setErrorMessage("Add a proposal title and scope before generating the PDF.");
+      return;
+    }
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setErrorMessage("Enter your final estimate amount. The AI uses the client's budget as context and does not set the quote.");
+      return;
+    }
+    if (
+      milestoneDrafts.length === 0 ||
+      milestoneDrafts.some((item) => !item.title.trim() || !(Number(item.percentage) > 0) || Number(item.percentage) > 100) ||
+      Math.abs(totalPercentage - 100) > 0.01
+    ) {
+      setErrorMessage("Complete every milestone and set the milestone percentages to total exactly 100% before generating the PDF.");
+      return;
+    }
+
+    setError("");
+    setNotice("");
     let allocated = 0;
-    const selected = milestoneDrafts.filter((m) => m.title.trim()).map((m, index, rows) => {
-      const val = index === rows.length - 1 ? Math.round((amount - allocated) * 100) / 100 : Math.round(amount * Number(m.percentage || 0)) / 100;
+    const selected = milestoneDrafts.map((m, index, rows) => {
+      const val = index === rows.length - 1
+        ? Math.round((amount - allocated) * 100) / 100
+        : Math.round(amount * Number(m.percentage || 0)) / 100;
       if (index < rows.length - 1) allocated += val;
       return { ...m, amount: val };
     });
